@@ -1,0 +1,28 @@
+# Core
+Django==5.2
+djangorestframework==3.16.0
+djangorestframework-simplejwt==5.5.0
+
+# Database
+psycopg[binary]==3.2.6
+
+# Cache / Queue
+redis==5.2.1
+celery==5.5.2
+django-celery-beat==2.8.1
+django-celery-results==2.6.0
+
+# API
+drf-spectacular==0.28.0
+django-filter==25.1
+django-cors-headers==4.7.0
+
+# Config
+django-environ==0.11.2
+
+# Files / Media
+Pillow==11.2.1
+weasyprint==65.1
+
+# Utils
+python-slugify==8.0.4

@@ -1,0 +1,87 @@
+x-backend-common: &backend-common
+  build:
+    context: ./backend
+    target: dev
+  env_file: ./backend/.env
+  volumes:
+    - ./backend:/app
+    - backend_logs:/app/logs
+    - backend_media:/app/media
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  # ─── Application ─────────────────────────────────────────────────────────────
+  backend:
+    <<: *backend-common
+    container_name: obraflow_backend
+    command: python manage.py runserver 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+
+  # ─── Celery workers ──────────────────────────────────────────────────────────
+  celery:
+    <<: *backend-common
+    container_name: obraflow_celery
+    command: >
+      celery -A config.celery worker
+        --loglevel=info
+        --concurrency=4
+        -Q default,cobrancas,notificacoes,fiscal,relatorios
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+
+  celery-beat:
+    <<: *backend-common
+    container_name: obraflow_celery_beat
+    command: >
+      celery -A config.celery beat
+        --loglevel=info
+        --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+
+  # ─── Database ────────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: obraflow_db
+    environment:
+      POSTGRES_DB: obraflow
+      POSTGRES_USER: obraflow
+      POSTGRES_PASSWORD: obraflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U obraflow -d obraflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ─── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: obraflow_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres_data:
+  redis_data:
+  backend_logs:
+  backend_media:
