@@ -1,0 +1,11 @@
+-r base.txt
+
+# Production server
+gunicorn==23.0.0
+uvicorn[standard]==0.34.2
+
+# Monitoring
+sentry-sdk[django]==2.26.1
+
+# Storage
+django-storages[s3]==1.14.6
