@@ -37,8 +37,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(max_length=255)
     role = models.CharField(max_length=20, choices=ROLES, default=ROLE_SELLER)
 
-    # Multi-tenant readiness
-    company_id = models.UUIDField(null=True, blank=True, db_index=True)
+    # Multi-tenant: every user belongs to exactly one Empresa.
+    # company_id is the Django-generated FK column — user.company_id returns Empresa UUID.
+    company = models.ForeignKey(
+        "empresas.Empresa",
+        on_delete=models.PROTECT,
+        related_name="usuarios",
+        null=True,   # temporarily nullable — data migration fills all rows, then NOT NULL enforced
+        blank=True,
+    )
 
     # Soft-delete (replicados do BaseModel — User não pode herdar por causa do AbstractBaseUser)
     deleted_at = models.DateTimeField(null=True, blank=True)
