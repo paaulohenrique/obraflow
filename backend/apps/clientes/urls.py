@@ -1,7 +1,9 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
+from rest_framework.routers import SimpleRouter
 
-router = DefaultRouter()
-# router.register("...", ..., basename="...")
+from .views import ClienteViewSet
+
+router = SimpleRouter()
+router.register("", ClienteViewSet, basename="cliente")
 
 urlpatterns = router.urls

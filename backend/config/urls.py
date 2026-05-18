@@ -9,6 +9,8 @@ from apps.core.views import HealthCheckView
 api_v1 = [
     # Auth
     path("auth/", include("apps.accounts.urls")),
+    # Platform
+    path("empresas/", include("apps.empresas.urls")),
     # Business domains
     path("clientes/", include("apps.clientes.urls")),
     path("fiado/", include("apps.fiado.urls")),

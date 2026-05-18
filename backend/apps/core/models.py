@@ -5,7 +5,9 @@ from django.db import models
 class BaseModel(models.Model):
     """Abstract base for every ObraFlow entity.
 
-    Provides UUID PK, audit timestamps, soft-delete and multi-tenant readiness.
+    Provides UUID PK, audit timestamps and soft-delete.
+    Multi-tenant isolation is enforced via a ForeignKey to Empresa on each
+    concrete domain model — not as a loose UUID field here.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -13,10 +15,6 @@ class BaseModel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
-
-    # Multi-tenant hook — populated once the tenant layer is implemented.
-    # Left nullable so single-tenant deployments work without migration changes.
-    company_id = models.UUIDField(null=True, blank=True, db_index=True)
 
     class Meta:
         abstract = True

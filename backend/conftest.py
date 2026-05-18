@@ -1,27 +1,31 @@
-import django
 import pytest
-from django.conf import settings
-
-
-@pytest.fixture(autouse=True)
-def reset_db_sequences(db):
-    """Fixture available to all tests that need the database."""
-    pass
+from rest_framework.test import APIClient
 
 
 @pytest.fixture
 def api_client():
-    from rest_framework.test import APIClient
     return APIClient()
 
 
 @pytest.fixture
-def admin_user(db):
+def empresa_padrao(db):
+    from apps.empresas.models import Empresa
+    return Empresa.objects.create(
+        razao_social="Empresa Teste",
+        cnpj="11222333000181",
+        plano=Empresa.PLANO_BASICO,
+        limite_usuarios=10,
+    )
+
+
+@pytest.fixture
+def admin_user(db, empresa_padrao):
     from apps.accounts.models import User
     return User.objects.create_superuser(
         email="admin@test.com",
         name="Admin Test",
         password="testpass123",
+        company=empresa_padrao,
     )
 
 
