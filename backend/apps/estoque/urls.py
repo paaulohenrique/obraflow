@@ -1,7 +1,18 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import SimpleRouter
 
-router = DefaultRouter()
-# router.register("...", ..., basename="...")
+from .views import (
+    CategoriaViewSet,
+    FornecedorViewSet,
+    MovimentacaoViewSet,
+    ProdutoViewSet,
+    UnidadeViewSet,
+)
+
+router = SimpleRouter()
+router.register("unidades", UnidadeViewSet, basename="estoque-unidade")
+router.register("categorias", CategoriaViewSet, basename="estoque-categoria")
+router.register("fornecedores", FornecedorViewSet, basename="estoque-fornecedor")
+router.register("produtos", ProdutoViewSet, basename="estoque-produto")
+router.register("movimentacoes", MovimentacaoViewSet, basename="estoque-movimentacao")
 
 urlpatterns = router.urls
