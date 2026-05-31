@@ -1,8 +1,9 @@
-from rest_framework import generics, permissions, status
+from rest_framework import generics, permissions, serializers, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.views import TokenObtainPairView
+from drf_spectacular.utils import extend_schema, inline_serializer
 
 from .models import User
 from .serializers import UserSerializer, UserCreateSerializer, ChangePasswordSerializer
@@ -30,6 +31,7 @@ class LoginView(TokenObtainPairView):
 class MeView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(responses={200: UserSerializer})
     def get(self, request):
         return Response(UserSerializer(request.user).data)
 
@@ -44,6 +46,7 @@ class UserCreateView(generics.CreateAPIView):
 
 
 class UserListView(generics.ListAPIView):
+    queryset = User.objects.none()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAdminUser]
     search_fields = ["name", "email"]
@@ -52,12 +55,23 @@ class UserListView(generics.ListAPIView):
     ordering = ["name"]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return User.objects.none()
         return User.objects.filter(company=self.request.user.company)
 
 
 class ChangePasswordView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        request=ChangePasswordSerializer,
+        responses={
+            200: inline_serializer(
+                name="ChangePasswordResponse",
+                fields={"detail": serializers.CharField()},
+            )
+        },
+    )
     def post(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
