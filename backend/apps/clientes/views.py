@@ -6,6 +6,7 @@ from drf_spectacular.utils import extend_schema, extend_schema_view
 from apps.core.pagination import StandardResultsSetPagination
 
 from .filters import ClienteFilter
+from .models import Cliente
 from .permissions import ClientePermission
 from .selectors import (
     get_clientes_bloqueados,
@@ -62,7 +63,9 @@ _ALLOWED_ORDERING = frozenset({
         tags=["Clientes"],
     ),
 )
-class ClienteViewSet(viewsets.ViewSet):
+class ClienteViewSet(viewsets.GenericViewSet):
+    queryset = Cliente.objects.none()
+    serializer_class = ClienteDetailSerializer
     permission_classes = [ClientePermission]
     # filterset_class kept for drf-spectacular OpenAPI schema generation only.
     filterset_class = ClienteFilter

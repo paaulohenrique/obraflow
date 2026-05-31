@@ -2,6 +2,7 @@ from rest_framework import status, viewsets
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
+from .models import Empresa
 from .permissions import EmpresaPermission
 from .selectors import get_empresa_by_id, get_all_empresas
 from .serializers import (
@@ -21,7 +22,9 @@ from apps.core.pagination import StandardResultsSetPagination
     partial_update=extend_schema(summary="Atualizar empresa", tags=["Empresas"]),
     destroy=extend_schema(summary="Remover empresa (soft delete)", tags=["Empresas"]),
 )
-class EmpresaViewSet(viewsets.ViewSet):
+class EmpresaViewSet(viewsets.GenericViewSet):
+    queryset = Empresa.objects.none()
+    serializer_class = EmpresaDetailSerializer
     permission_classes = [EmpresaPermission]
 
     def list(self, request):
