@@ -1,15 +1,17 @@
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter
+from drf_spectacular.utils import extend_schema, extend_schema_view
+
+from apps.core.pagination import StandardResultsSetPagination
 
 from .filters import ClienteFilter
 from .permissions import ClientePermission
 from .selectors import (
-    get_clientes_ativos,
     get_clientes_bloqueados,
     get_clientes_inadimplentes,
     get_cliente_by_id,
+    search_clientes,
 )
 from .serializers import (
     ClienteCreateSerializer,
@@ -24,6 +26,13 @@ from .services import (
     desbloquear_cliente,
     soft_delete_cliente,
 )
+
+_ALLOWED_ORDERING = frozenset({
+    "nome", "-nome",
+    "created_at", "-created_at",
+    "saldo_devedor", "-saldo_devedor",
+    "limite_credito", "-limite_credito",
+})
 
 
 @extend_schema_view(
@@ -55,6 +64,7 @@ from .services import (
 )
 class ClienteViewSet(viewsets.ViewSet):
     permission_classes = [ClientePermission]
+    # filterset_class kept for drf-spectacular OpenAPI schema generation only.
     filterset_class = ClienteFilter
     search_fields = ["nome", "cpf_cnpj", "telefone", "whatsapp", "email"]
     ordering_fields = ["nome", "created_at", "saldo_devedor", "limite_credito"]
@@ -66,35 +76,21 @@ class ClienteViewSet(viewsets.ViewSet):
     # ── list ─────────────────────────────────────────────────────────────────
 
     def list(self, request):
-        qs = get_clientes_ativos(company_id=self._company_id())
+        # Single source of truth: search_clientes handles all filter/search logic.
+        # query_params.dict() flattens multi-value keys to the last value, which
+        # is the expected behaviour for our single-value filter params.
+        filters = request.query_params.dict()
+        qs = search_clientes(company_id=self._company_id(), filters=filters)
 
-        # Apply django-filter manually (ViewSet doesn't auto-apply it)
-        f = ClienteFilter(request.query_params, queryset=qs)
-        qs = f.qs
-
-        # Search
-        if q := request.query_params.get("search"):
-            from django.db.models import Q
-            qs = qs.filter(
-                Q(nome__icontains=q)
-                | Q(cpf_cnpj__icontains=q)
-                | Q(telefone__icontains=q)
-                | Q(whatsapp__icontains=q)
-                | Q(email__icontains=q)
-            )
-
-        # Ordering
-        ordering = request.query_params.get("ordering", "nome")
-        allowed = {"nome", "-nome", "created_at", "-created_at",
-                   "saldo_devedor", "-saldo_devedor", "limite_credito", "-limite_credito"}
-        if ordering in allowed:
+        ordering = filters.get("ordering", "nome")
+        if ordering in _ALLOWED_ORDERING:
             qs = qs.order_by(ordering)
+        else:
+            qs = qs.order_by("nome")
 
-        from apps.core.pagination import StandardResultsSetPagination
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(qs, request, view=self)
-        serializer = ClienteListSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return paginator.get_paginated_response(ClienteListSerializer(page, many=True).data)
 
     # ── create ───────────────────────────────────────────────────────────────
 
@@ -162,7 +158,6 @@ class ClienteViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="inadimplentes")
     def inadimplentes(self, request):
         qs = get_clientes_inadimplentes(company_id=self._company_id())
-        from apps.core.pagination import StandardResultsSetPagination
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(qs, request, view=self)
         return paginator.get_paginated_response(ClienteListSerializer(page, many=True).data)
@@ -175,7 +170,6 @@ class ClienteViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="bloqueados")
     def bloqueados(self, request):
         qs = get_clientes_bloqueados(company_id=self._company_id())
-        from apps.core.pagination import StandardResultsSetPagination
         paginator = StandardResultsSetPagination()
         page = paginator.paginate_queryset(qs, request, view=self)
         return paginator.get_paginated_response(ClienteListSerializer(page, many=True).data)

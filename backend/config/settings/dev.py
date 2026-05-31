@@ -3,6 +3,11 @@ from .base import *  # noqa: F401, F403
 DEBUG = True
 ALLOWED_HOSTS = ["*"]
 
+# Disable global throttling in dev so tests run without a cache backend dependency
+REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"] = []  # noqa: F405
+# Disable login-specific throttle in dev (LoginView checks for this key)
+REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"].pop("login", None)  # noqa: F405
+
 # Show emails in console during development
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 

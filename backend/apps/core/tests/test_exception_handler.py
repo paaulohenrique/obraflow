@@ -107,10 +107,11 @@ class TestCustomExceptionHandlerEnvelope:
         assert resp.status_code == 400
         assert resp.data["error"] is True
 
-    def test_envelope_always_has_three_keys(self):
+    def test_envelope_always_has_required_keys(self):
+        # When called without a real request (request=None), request_id is absent.
         for exc in [NotFound(), PermissionDenied(), ValidationError("x")]:
             resp = _make_response(exc)
-            assert set(resp.data.keys()) == {"error", "status_code", "detail"}
+            assert {"error", "status_code", "detail"}.issubset(set(resp.data.keys()))
 
     def test_no_double_nesting(self):
         resp = _make_response(NotFound("Test"))

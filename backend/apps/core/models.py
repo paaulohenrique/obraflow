@@ -2,6 +2,18 @@ import uuid
 from django.db import models
 
 
+class ImmutableQuerySet(models.QuerySet):
+    """QuerySet that blocks bulk deletions — used by AuditLog."""
+
+    def delete(self):
+        raise RuntimeError("AuditLog é imutável e não pode ser removido.")
+
+
+class ImmutableManager(models.Manager):
+    def get_queryset(self):
+        return ImmutableQuerySet(self.model, using=self._db)
+
+
 class BaseModel(models.Model):
     """Abstract base for every ObraFlow entity.
 
@@ -37,7 +49,12 @@ class BaseModel(models.Model):
 
 
 class AuditLog(BaseModel):
-    """Records every mutating action for compliance and debugging."""
+    """Records every mutating action for compliance and debugging.
+
+    Immutability contract: AuditLog records must never be modified or deleted.
+    soft_delete() and delete() raise RuntimeError to enforce this at the ORM
+    level. The Django admin is configured read-only and without delete actions.
+    """
 
     ACTION_CREATE = "CREATE"
     ACTION_UPDATE = "UPDATE"
@@ -49,6 +66,8 @@ class AuditLog(BaseModel):
         (ACTION_DELETE, "Exclusão"),
         (ACTION_RESTORE, "Restauração"),
     ]
+
+    objects = ImmutableManager()
 
     user = models.ForeignKey(
         "accounts.User",
@@ -63,6 +82,7 @@ class AuditLog(BaseModel):
     after = models.JSONField(null=True, blank=True)
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True)
+    request_id = models.CharField(max_length=64, blank=True, default="")
 
     class Meta(BaseModel.Meta):
         verbose_name = "Log de Auditoria"
@@ -74,3 +94,9 @@ class AuditLog(BaseModel):
 
     def __str__(self):
         return f"{self.action} {self.entity_type} {self.entity_id}"
+
+    def soft_delete(self):
+        raise RuntimeError("AuditLog é imutável e não pode ser removido.")
+
+    def delete(self, *args, **kwargs):
+        raise RuntimeError("AuditLog é imutável e não pode ser removido.")

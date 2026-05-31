@@ -1,0 +1,19 @@
+[run]
+source = apps
+omit =
+    */migrations/*
+    */tests/*
+    */apps.py
+    */__init__.py
+    */admin.py
+    */conftest.py
+    config/*
+    manage.py
+
+[report]
+show_missing = True
+skip_covered = False
+fail_under = 80
+
+[html]
+directory = htmlcov

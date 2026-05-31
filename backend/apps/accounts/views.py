@@ -2,9 +2,29 @@ from rest_framework import generics, permissions, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import User
 from .serializers import UserSerializer, UserCreateSerializer, ChangePasswordSerializer
+from .throttles import LoginRateThrottle
+
+
+class LoginView(TokenObtainPairView):
+    """JWT login with brute-force protection (5 req/min per IP).
+
+    The throttle is controlled exclusively by the presence of the "login" key
+    in DEFAULT_THROTTLE_RATES. This decouples it from DEFAULT_THROTTLE_CLASSES,
+    meaning that disabling global throttles (e.g. in dev) does NOT
+    accidentally disable the login protection in production.
+
+    To disable in dev: remove the "login" key from DEFAULT_THROTTLE_RATES.
+    """
+
+    def get_throttles(self):
+        from rest_framework.settings import api_settings
+        if not api_settings.DEFAULT_THROTTLE_RATES.get("login"):
+            return []
+        return [LoginRateThrottle()]
 
 
 class MeView(APIView):

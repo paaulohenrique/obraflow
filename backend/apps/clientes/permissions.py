@@ -1,5 +1,6 @@
 from rest_framework.permissions import BasePermission
 
+from apps.core.exceptions import require_company
 
 SAFE_ACTIONS = {"list", "retrieve", "inadimplentes", "bloqueados"}
 WRITE_ACTIONS = {"create"}
@@ -19,6 +20,9 @@ class ClientePermission(BasePermission):
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
             return False
+
+        # Every tenant-scoped operation requires a company association.
+        require_company(request.user)
 
         action = getattr(view, "action", None)
         role = getattr(request.user, "role", "")
