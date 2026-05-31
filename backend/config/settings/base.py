@@ -120,6 +120,13 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+# Boletos / OCR
+BOLETOS_MAX_PDF_SIZE = env.int("BOLETOS_MAX_PDF_SIZE", default=15 * 1024 * 1024)
+BOLETOS_MAX_IMAGE_SIZE = env.int("BOLETOS_MAX_IMAGE_SIZE", default=10 * 1024 * 1024)
+BOLETOS_MAX_PDF_PAGES = env.int("BOLETOS_MAX_PDF_PAGES", default=3)
+BOLETOS_OCR_PROVIDER = env("BOLETOS_OCR_PROVIDER", default="FAKE")
+BOLETOS_FAKE_OCR_TEXT = env("BOLETOS_FAKE_OCR_TEXT", default="")
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # REST Framework
@@ -183,6 +190,16 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    "ENUM_NAME_OVERRIDES": {
+        "BoletoStatusEnum": "apps.boletos.models.BoletoOCR.STATUS_CHOICES",
+        "BoletoTipoArquivoEnum": "apps.boletos.models.BoletoOCR.TIPO_CHOICES",
+        "OCRProcessamentoStatusEnum": "apps.boletos.models.OCRProcessamento.STATUS_CHOICES",
+        "OCRProcessamentoProviderEnum": "apps.boletos.models.OCRProcessamento.PROVIDER_CHOICES",
+        "HistoricoBoletoEventoEnum": "apps.boletos.models.HistoricoBoleto.EVENTO_CHOICES",
+        "ContaFinanceiraTipoEnum": "apps.financeiro.models.ContaFinanceira.TIPO_CHOICES",
+        "LancamentoTipoEnum": "apps.financeiro.models.LancamentoFinanceiro.TIPO_CHOICES",
+        "LancamentoStatusEnum": "apps.financeiro.models.LancamentoFinanceiro.STATUS_CHOICES",
+    },
 }
 
 # Celery
