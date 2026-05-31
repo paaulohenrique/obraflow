@@ -19,6 +19,7 @@ api_v1 = [
     path("fiscal/", include("apps.fiscal.urls")),
     path("cobrancas/", include("apps.cobrancas.urls")),
     path("boletos/", include("apps.boletos.urls")),
+    path("notas-entrada/", include("apps.notas_entrada.urls")),
     path("notificacoes/", include("apps.notificacoes.urls")),
     path("relatorios/", include("apps.relatorios.urls")),
     # API Docs

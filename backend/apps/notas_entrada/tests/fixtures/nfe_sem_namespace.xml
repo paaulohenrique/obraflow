@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc versao="4.00">
+  <NFe>
+    <infNFe Id="NFe35210112345678000195550010000009991000012340" versao="4.00">
+      <ide>
+        <mod>55</mod>
+        <serie>1</serie>
+        <nNF>999</nNF>
+        <dhEmi>2026-05-28T08:00:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>12345678000195</CNPJ>
+        <xNome>Distribuidora Sem NS Ltda</xNome>
+      </emit>
+      <dest>
+        <CNPJ>11222333000181</CNPJ>
+        <xNome>Empresa Destino SA</xNome>
+      </dest>
+      <det nItem="1">
+        <prod>
+          <cProd>P001</cProd>
+          <cEAN>7891000000001</cEAN>
+          <xProd>PRODUTO SEM NAMESPACE</xProd>
+          <NCM>25232900</NCM>
+          <CFOP>1102</CFOP>
+          <uCom>UN</uCom>
+          <qCom>10.000</qCom>
+          <vUnCom>50.00</vUnCom>
+          <vProd>500.00</vProd>
+        </prod>
+        <imposto>
+          <ICMS>
+            <ICMS00>
+              <vICMS>60.00</vICMS>
+            </ICMS00>
+          </ICMS>
+        </imposto>
+      </det>
+      <total>
+        <ICMSTot>
+          <vProd>500.00</vProd>
+          <vFrete>0.00</vFrete>
+          <vDesc>0.00</vDesc>
+          <vICMS>60.00</vICMS>
+          <vIPI>0.00</vIPI>
+          <vNF>500.00</vNF>
+        </ICMSTot>
+      </total>
+    </infNFe>
+  </NFe>
+</nfeProc>

@@ -9,6 +9,7 @@ from apps.accounts.models import User
 from apps.clientes.models import Cliente
 from apps.empresas.models import Empresa
 from apps.estoque.models import CategoriaProduto, Fornecedor, Produto, UnidadeMedida
+from apps.financeiro.models import CaixaDiario, ContaFinanceira
 
 
 COMPANY_A_UUID = uuid.UUID("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")
@@ -35,6 +36,28 @@ def empresa_b(db):
         plano=Empresa.PLANO_BASICO,
         limite_usuarios=50,
     )
+
+
+@pytest.fixture(autouse=True)
+def financeiro_padrao_para_fiado(db, empresa_a, empresa_b):
+    for empresa in (empresa_a, empresa_b):
+        banco = ContaFinanceira.objects.create(
+            company=empresa,
+            nome="Banco padrão Fiado",
+            tipo=ContaFinanceira.TIPO_BANCO,
+        )
+        caixa = ContaFinanceira.objects.create(
+            company=empresa,
+            nome="Caixa padrão Fiado",
+            tipo=ContaFinanceira.TIPO_CAIXA,
+        )
+        CaixaDiario.objects.create(
+            company=empresa,
+            conta_financeira=caixa,
+            saldo_inicial=caixa.saldo_atual,
+            saldo_final=caixa.saldo_atual,
+        )
+    return banco
 
 
 def make_user(email, role, empresa, **kwargs):
