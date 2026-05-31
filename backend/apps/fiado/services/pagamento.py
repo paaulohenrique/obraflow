@@ -121,6 +121,15 @@ def registrar_pagamento_fiado(
     _full_clean_or_400(pagamento)
     pagamento.save()
 
+    from apps.financeiro.services.integracao_fiado import registrar_recebimento_fiado
+
+    registrar_recebimento_fiado(
+        pagamento_fiado=pagamento,
+        conta_financeira=data.get("conta_financeira"),
+        user=user,
+        request=request,
+    )
+
     conta_before = conta_snapshot(conta)
     cliente_before = cliente_snapshot(cliente)
 
@@ -212,6 +221,14 @@ def cancelar_pagamento_fiado(
     _save_immutable_update(
         pagamento,
         update_fields=["status", "cancelled_by", "cancelled_at", "motivo_cancelamento"],
+    )
+
+    from apps.financeiro.services.integracao_fiado import estornar_recebimento_fiado
+
+    estornar_recebimento_fiado(
+        pagamento_fiado=pagamento,
+        user=user,
+        request=request,
     )
 
     conta.valor_pago = money(conta.valor_pago - pagamento.valor)

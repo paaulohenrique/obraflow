@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 from apps.clientes.models import Cliente
 from apps.core.serializers import BaseModelSerializer
 from apps.estoque.models import Produto
+from apps.financeiro.models import ContaFinanceira
 
 from .models import ContaFiado, HistoricoFiado, ItemFiado, PagamentoFiado
 
@@ -210,13 +211,20 @@ class PagamentoFiadoSerializer(BaseModelSerializer):
         read_only_fields = fields
 
 
-class PagamentoFiadoCreateSerializer(RejectCompanyPayloadMixin, serializers.Serializer):
+class PagamentoFiadoCreateSerializer(TenantScopedSerializerMixin, serializers.Serializer):
+    tenant_scoped_fields = {"conta_financeira": ContaFinanceira}
+
     valor = serializers.DecimalField(
         max_digits=14,
         decimal_places=2,
         min_value=Decimal("0.01"),
     )
     forma_pagamento = serializers.ChoiceField(choices=PagamentoFiado.FORMA_CHOICES)
+    conta_financeira = serializers.PrimaryKeyRelatedField(
+        queryset=ContaFinanceira.objects.none(),
+        required=False,
+        allow_null=True,
+    )
     data_pagamento = serializers.DateTimeField(required=False)
     observacao = serializers.CharField(required=False, allow_blank=True)
     idempotency_key = serializers.CharField(max_length=120, required=False, allow_blank=True)
