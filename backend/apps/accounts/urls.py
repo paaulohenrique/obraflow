@@ -1,10 +1,10 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView, TokenVerifyView
-from .views import MeView, UserCreateView, UserListView, ChangePasswordView
+from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
+from .views import LoginView, MeView, UserCreateView, UserListView, ChangePasswordView
 
 urlpatterns = [
     # JWT
-    path("token/", TokenObtainPairView.as_view(), name="token-obtain"),
+    path("token/", LoginView.as_view(), name="token-obtain"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("token/verify/", TokenVerifyView.as_view(), name="token-verify"),
     # Users

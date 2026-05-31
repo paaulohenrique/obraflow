@@ -1,0 +1,52 @@
+# Compose para rodar a suite de testes sem conflitar com portas do host.
+# Banco e Redis ficam na rede interna — nenhuma porta é exposta.
+#
+# Uso:
+#   docker compose -f docker-compose.test.yml run --rm test
+#   docker compose -f docker-compose.test.yml down -v   # limpa volumes de teste
+
+services:
+  db_test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: obraflow_test
+      POSTGRES_USER: obraflow
+      POSTGRES_PASSWORD: obraflow
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U obraflow -d obraflow_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis_test:
+    image: redis:7-alpine
+    command: redis-server --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  test:
+    build:
+      context: ./backend
+      target: dev
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             pytest --tb=short 2>&1"
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      DATABASE_URL: postgres://obraflow:obraflow@db_test:5432/obraflow_test
+      REDIS_URL: redis://redis_test:6379/0
+      CELERY_BROKER_URL: redis://redis_test:6379/1
+      CELERY_RESULT_BACKEND: django-db
+      SECRET_KEY: test-secret-key-sprint0-hardening
+      DEBUG: "True"
+      ALLOWED_HOSTS: "*"
+    depends_on:
+      db_test:
+        condition: service_healthy
+      redis_test:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app

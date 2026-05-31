@@ -5,6 +5,7 @@ from typing import Any
 from django.db import transaction
 from rest_framework.exceptions import ValidationError
 
+from apps.core.exceptions import require_company
 from apps.core.models import AuditLog
 from apps.core.services import create_audit_log
 from apps.clientes.models import Cliente
@@ -56,6 +57,8 @@ def create_cliente(
     data: dict[str, Any],
     request=None,
 ) -> Cliente:
+    require_company(user)
+
     tipo_pessoa = data.get("tipo_pessoa", Cliente.TIPO_PF)
     raw_doc = data.get("cpf_cnpj", "")
 
@@ -112,6 +115,7 @@ def update_cliente(
     data: dict[str, Any],
     request=None,
 ) -> Cliente:
+    require_company(user)
     before = _snapshot(cliente)
     company_id = getattr(user, "company_id", None)
 
@@ -156,6 +160,7 @@ def update_cliente(
 
 @transaction.atomic
 def bloquear_cliente(*, user, cliente: Cliente, request=None) -> Cliente:
+    require_company(user)
     if cliente.bloqueado:
         raise ValidationError({"bloqueado": "Cliente já está bloqueado."})
     before = _snapshot(cliente)
@@ -174,6 +179,7 @@ def bloquear_cliente(*, user, cliente: Cliente, request=None) -> Cliente:
 
 @transaction.atomic
 def desbloquear_cliente(*, user, cliente: Cliente, request=None) -> Cliente:
+    require_company(user)
     if not cliente.bloqueado:
         raise ValidationError({"bloqueado": "Cliente não está bloqueado."})
     before = _snapshot(cliente)
@@ -192,6 +198,7 @@ def desbloquear_cliente(*, user, cliente: Cliente, request=None) -> Cliente:
 
 @transaction.atomic
 def soft_delete_cliente(*, user, cliente: Cliente, request=None) -> None:
+    require_company(user)
     before = _snapshot(cliente)
     cliente.soft_delete()
     create_audit_log(

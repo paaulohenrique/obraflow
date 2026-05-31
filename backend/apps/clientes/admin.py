@@ -16,6 +16,7 @@ class ClienteAdmin(admin.ModelAdmin):
         "saldo_devedor",
         "bloqueado_badge",
         "ativo_badge",
+        "company",
         "created_at",
     ]
     list_filter = [
@@ -67,8 +68,8 @@ class ClienteAdmin(admin.ModelAdmin):
 
     def bloqueado_badge(self, obj):
         if obj.bloqueado:
-            return format_html('<span style="color:red;font-weight:bold">🔒 Bloqueado</span>')
-        return format_html('<span style="color:green">✓ Ativo</span>')
+            return format_html('<span style="color:red;font-weight:bold">Bloqueado</span>')
+        return format_html('<span style="color:green">Ativo</span>')
     bloqueado_badge.short_description = "Status"
 
     def ativo_badge(self, obj):
@@ -82,17 +83,8 @@ class ClienteAdmin(admin.ModelAdmin):
     credito_disponivel_display.short_description = "Crédito Disponível"
 
     def get_queryset(self, request):
-        # Show all records (including soft-deleted) in admin
         return Cliente.objects.all()
 
-    actions = ["bloquear_selecionados", "desbloquear_selecionados"]
-
-    def bloquear_selecionados(self, request, queryset):
-        updated = queryset.filter(bloqueado=False).update(bloqueado=True)
-        self.message_user(request, f"{updated} cliente(s) bloqueado(s).")
-    bloquear_selecionados.short_description = "Bloquear clientes selecionados"
-
-    def desbloquear_selecionados(self, request, queryset):
-        updated = queryset.filter(bloqueado=True).update(bloqueado=False)
-        self.message_user(request, f"{updated} cliente(s) desbloqueado(s).")
-    desbloquear_selecionados.short_description = "Desbloquear clientes selecionados"
+    # Bulk actions (bloquear/desbloquear via queryset.update) were intentionally
+    # removed: they bypassed require_company, AuditLog and tenant isolation.
+    # Use the API endpoints POST /clientes/{id}/bloquear/ and /desbloquear/ instead.

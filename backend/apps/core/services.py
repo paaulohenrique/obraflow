@@ -5,9 +5,11 @@ def create_audit_log(*, user, action, entity, before=None, after=None, request=N
     """Records a mutation event. Call from service layer, not signals."""
     ip = None
     agent = ""
+    rid = ""
     if request:
         ip = _get_client_ip(request)
         agent = request.META.get("HTTP_USER_AGENT", "")
+        rid = getattr(request, "request_id", "") or ""
 
     AuditLog.objects.create(
         user=user,
@@ -18,6 +20,7 @@ def create_audit_log(*, user, action, entity, before=None, after=None, request=N
         after=after,
         ip_address=ip,
         user_agent=agent,
+        request_id=rid,
     )
 
 

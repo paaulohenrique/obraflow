@@ -103,15 +103,72 @@ pytest --cov=apps         # com cobertura
 
 ```
 apps/nome_app/
-├── models.py       → entidades do banco
-├── serializers.py  → validação e serialização
-├── views.py        → ViewSets / APIViews
-├── urls.py         → roteamento
-├── services.py     → lógica de negócio (mutations)
-├── selectors.py    → queries de leitura
-├── tasks.py        → tarefas Celery
-├── permissions.py  → permissões customizadas
-├── admin.py        → admin Django
+├── models.py         → entidades do banco
+├── serializers.py    → validação e serialização
+├── views.py          → ViewSets / APIViews (sem lógica de negócio)
+├── urls.py           → roteamento
+├── services/         → lógica de negócio (mutations) — pacote ou arquivo
+│   ├── __init__.py   →   re-exporta símbolos públicos
+│   └── <dominio>.py  →   funções de mutação por subdomínio
+├── selectors.py      → queries de leitura (retornam QuerySet ou objeto)
+├── filters.py        → FilterSets (django-filter) — schema Swagger
+├── validators.py     → validações de domínio puras
+├── tasks.py          → tarefas Celery
+├── permissions.py    → permissões customizadas por app
+├── admin.py          → admin Django
 ├── migrations/
 └── tests/
+    ├── conftest.py   → fixtures e factories do app
+    ├── test_models.py
+    ├── test_services.py
+    ├── test_selectors.py
+    ├── test_views.py
+    └── test_validators.py
 ```
+
+### Regras de services
+
+**Padrão oficial:** `apps/<app>/services/` como pacote Python.
+
+```python
+# apps/<app>/services/__init__.py — re-exporta o que views.py precisa
+from .cliente import create_cliente, update_cliente, soft_delete_cliente
+
+# apps/<app>/services/<dominio>.py — funções puras com @transaction.atomic
+@transaction.atomic
+def create_cliente(*, user, data: dict, request=None) -> Cliente:
+    require_company(user)   # guard multi-tenant obrigatório
+    ...
+    create_audit_log(...)
+    return cliente
+```
+
+**Regras:**
+- Toda função de mutação usa `@transaction.atomic`
+- `require_company(user)` é chamado no topo de toda função tenant-scoped
+- Views não contêm Q objects — busca e filtros ficam em `selectors.py`
+- `selectors.py` não importa de `services/` e vice-versa
+- `AuditLog` é criado no service, nunca na view ou no model
+
+---
+
+## Segurança (Sprint 0)
+
+| Proteção | Implementação |
+|---|---|
+| Brute force login | `LoginRateThrottle` — 5 req/min por IP |
+| User sem empresa | `require_company()` em permissions + services |
+| Tenant isolation | `_base_qs(company_id)` levanta `PermissionDenied` se `None` |
+| AuditLog imutável | `soft_delete()` e `delete()` levantam `RuntimeError` |
+| Request tracing | `X-Request-ID` injetado pelo middleware em toda resposta |
+| Headers de produção | HSTS, XSS, nosniff, X-Frame-Options |
+| Stacktrace em prod | Desabilitado — Sentry recebe, cliente não vê |
+
+---
+
+## Observabilidade
+
+- **Request ID**: Cada request recebe `X-Request-ID` (UUID gerado ou propagado do header de entrada). Aparece nos logs e no envelope de erro.
+- **AuditLog**: Toda mutação registra `user`, `action`, `entity_type`, `entity_id`, `before`, `after`, `ip`, `user_agent`.
+- **HealthCheck**: `GET /api/health/` verifica DB e Redis, retorna `503` se indisponível.
+- **Logs**: `RequestLoggingMiddleware` loga `METHOD PATH STATUS DURATIONms request_id=...`.
