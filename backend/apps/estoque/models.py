@@ -243,6 +243,92 @@ class Produto(BaseModel):
         return margem.quantize(Decimal("0.01"))
 
 
+FATOR_MIN = Decimal("0.000001")
+
+
+class FormaVendaProduto(BaseModel):
+    """Representa uma forma de venda de um produto (ex: Metro, Rolo 100m, Saco 50kg).
+
+    O estoque é sempre mantido em `produto.unidade` (unidade base).
+    `fator_conversao` indica quantas unidades base equivalem a 1 desta forma.
+    """
+
+    company = models.ForeignKey(
+        "empresas.Empresa",
+        on_delete=models.PROTECT,
+        related_name="formas_venda_produto",
+    )
+    produto = models.ForeignKey(
+        Produto,
+        on_delete=models.PROTECT,
+        related_name="formas_venda",
+    )
+    nome = models.CharField(max_length=120)
+    codigo = models.CharField(max_length=40, blank=True)
+    unidade = models.CharField(max_length=20)  # sigla desta forma (ex: M, ROLO, SACO, KG)
+    fator_conversao = models.DecimalField(
+        max_digits=14,
+        decimal_places=6,
+        validators=[MinValueValidator(FATOR_MIN)],
+    )
+    preco_venda = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
+    )
+    ativo = models.BooleanField(default=True)
+    padrao = models.BooleanField(default=False)
+    permite_fracionado = models.BooleanField(default=True)
+
+    class Meta(BaseModel.Meta):
+        verbose_name = "Forma de Venda do Produto"
+        verbose_name_plural = "Formas de Venda dos Produtos"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["company", "produto", "codigo"],
+                condition=Q(deleted_at__isnull=True) & ~Q(codigo=""),
+                name="estoque_unique_forma_venda_codigo",
+            ),
+            models.UniqueConstraint(
+                fields=["company", "produto"],
+                condition=Q(deleted_at__isnull=True) & Q(padrao=True) & Q(ativo=True),
+                name="estoque_unique_forma_venda_padrao_por_produto",
+            ),
+            models.CheckConstraint(
+                condition=Q(fator_conversao__gt=0),
+                name="estoque_forma_venda_fator_gt_zero",
+            ),
+            models.CheckConstraint(
+                condition=Q(preco_venda__gte=0),
+                name="estoque_forma_venda_preco_gte_zero",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["company", "produto", "ativo"]),
+            models.Index(fields=["company", "produto", "padrao"]),
+        ]
+
+    def clean(self):
+        super().clean()
+        self.nome = (self.nome or "").strip()
+        self.codigo = (self.codigo or "").strip().upper()
+        self.unidade = (self.unidade or "").strip().upper()
+        if not self.unidade:
+            raise ValidationError({"unidade": "Unidade é obrigatória."})
+        if self.fator_conversao is not None and self.fator_conversao <= Decimal("0"):
+            raise ValidationError({"fator_conversao": "Fator de conversão deve ser maior que zero."})
+        if self.produto_id and self.company_id and self.produto.company_id != self.company_id:
+            raise ValidationError({"produto": "Produto não pertence à empresa."})
+
+    def converter(self, quantidade: Decimal) -> Decimal:
+        """Converte quantidade desta forma para a unidade base do produto."""
+        return (quantidade * self.fator_conversao).quantize(Decimal("0.001"))
+
+    def __str__(self):
+        return f"{self.produto} — {self.nome} (×{self.fator_conversao})"
+
+
 class MovimentacaoEstoqueQuerySet(models.QuerySet):
     def update(self, **kwargs):
         raise RuntimeError("Movimentação de estoque é imutável e não pode ser editada.")
@@ -330,6 +416,19 @@ class MovimentacaoEstoque(BaseModel):
         null=True,
         blank=True,
     )
+    forma_venda = models.ForeignKey(
+        FormaVendaProduto,
+        on_delete=models.SET_NULL,
+        related_name="movimentacoes",
+        null=True,
+        blank=True,
+    )
+    quantidade_informada = models.DecimalField(
+        max_digits=14,
+        decimal_places=3,
+        null=True,
+        blank=True,
+    )
     idempotency_key = models.CharField(max_length=120, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
 
@@ -385,6 +484,11 @@ class MovimentacaoEstoque(BaseModel):
             self.save(update_fields=["status", "updated_at"])
         finally:
             self._allow_status_update = False
+
+    @property
+    def quantidade_convertida(self) -> Decimal:
+        """Quantidade na unidade base (sempre |quantidade_delta|)."""
+        return abs(self.quantidade_delta)
 
     def soft_delete(self):
         raise RuntimeError("Movimentação de estoque é imutável e não pode ser removida.")

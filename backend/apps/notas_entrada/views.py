@@ -33,7 +33,7 @@ from .serializers import (
 )
 from .services.confirmacao import confirmar_nota
 from .services.matching import sugestoes_produto
-from .services.nota import importar_xml_nota, rejeitar_nota, vincular_fornecedor, vincular_produto_item
+from .services.nota import _UNSET, importar_xml_nota, rejeitar_nota, vincular_fornecedor, vincular_produto_item
 
 
 _ORDERING = {
@@ -231,12 +231,16 @@ class NotaFiscalEntradaViewSet(viewsets.GenericViewSet):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
+        # Usa sentinel para distinguir "não enviado" de "enviado como null"
+        forma_venda = data["forma_venda"] if "forma_venda" in data else _UNSET
+
         item = vincular_produto_item(
             user=request.user,
             item=item,
             produto=data.get("produto", item.produto),
             custo_unitario=data.get("custo_unitario"),
             ignorado=data.get("ignorado"),
+            forma_venda=forma_venda,
             request=request,
         )
         return Response(ItemNotaListSerializer(item, context=self._ctx()).data)

@@ -58,7 +58,7 @@ def _itens_ativos(nota: NotaFiscalEntrada):
         produto__isnull=False,
         ignorado=False,
         deleted_at__isnull=True,
-    ).select_related("produto", "produto__fornecedor_principal")
+    ).select_related("produto", "produto__fornecedor_principal", "forma_venda")
 
 
 @transaction.atomic
@@ -112,15 +112,28 @@ def confirmar_nota(
     # Criar MovimentacaoEstoque para cada item ativo
     for item in itens_ativos:
         custo = item.custo_unitario or item.valor_unitario
+
+        # Converte para unidade base quando forma_venda está definida.
+        # item.quantidade = qtd bruta do XML (ex: 10 sacos).
+        # qtd_base = qtd na unidade base do produto (ex: 500 kg).
+        if item.forma_venda_id:
+            qtd_base = item.forma_venda.converter(item.quantidade)
+            qtd_informada = item.quantidade  # preserva qtd original do XML
+        else:
+            qtd_base = item.quantidade
+            qtd_informada = None
+
         idem_key = f"nfe-item-{item.pk}"
         movimentacao = entrada_estoque(
             user=user,
             produto=item.produto,
-            quantidade=item.quantidade,
+            quantidade=qtd_base,
             custo_unitario=Decimal(str(custo)) if custo else None,
             fornecedor=nota.fornecedor,
             motivo=f"NF-e {nota.numero}/{nota.serie}",
             observacao=f"Item: {item.descricao_original[:200]}",
+            forma_venda=item.forma_venda,
+            quantidade_informada=qtd_informada,
             idempotency_key=idem_key,
             metadata={
                 "nota_id": str(nota.pk),

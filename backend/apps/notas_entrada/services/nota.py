@@ -289,6 +289,9 @@ def vincular_fornecedor(
 # ── Vincular Produto ao Item ──────────────────────────────────────────────────
 
 
+_UNSET = object()
+
+
 @transaction.atomic
 def vincular_produto_item(
     *,
@@ -297,11 +300,10 @@ def vincular_produto_item(
     produto=None,
     custo_unitario=None,
     ignorado: bool | None = None,
+    forma_venda=_UNSET,
     request=None,
 ) -> ItemNotaFiscalEntrada:
     require_company(user)
-
-    from apps.estoque.models import Produto as ProdutoModel
 
     if item.company_id != user.company_id:
         raise ValidationError({"item": "Item não pertence à empresa."})
@@ -315,11 +317,38 @@ def vincular_produto_item(
     if produto is not None and produto.company_id != user.company_id:
         raise ValidationError({"produto": "Produto não pertence à empresa."})
 
+    # Produto que estará no item após a atualização (pode mudar nesta chamada)
+    produto_final = produto if (produto is not None or "produto" in (request.data if request else {})) else item.produto
+
+    # Valida forma_venda antes de qualquer alteração no item
+    if forma_venda is not _UNSET:
+        if forma_venda is not None:
+            if forma_venda.company_id != user.company_id:
+                raise ValidationError({"forma_venda": "Forma de venda não pertence à empresa."})
+            if not forma_venda.ativo:
+                raise ValidationError({"forma_venda": "Forma de venda está inativa."})
+            if produto_final is None:
+                raise ValidationError({
+                    "forma_venda": "Defina o produto antes de selecionar a forma de venda."
+                })
+            if forma_venda.produto_id != produto_final.pk:
+                raise ValidationError({
+                    "forma_venda": "Forma de venda não pertence ao produto selecionado."
+                })
+
     update_fields = ["updated_at"]
 
     if produto is not None or "produto" in (request.data if request else {}):
         item.produto = produto
         update_fields.append("produto")
+        # Limpa forma_venda automaticamente se produto mudou e forma_venda não foi enviada
+        if forma_venda is _UNSET and item.forma_venda_id:
+            item.forma_venda = None
+            update_fields.append("forma_venda")
+
+    if forma_venda is not _UNSET:
+        item.forma_venda = forma_venda
+        update_fields.append("forma_venda")
 
     if custo_unitario is not None:
         item.custo_unitario = custo_unitario
@@ -336,14 +365,18 @@ def vincular_produto_item(
     descricao = (
         f"Item '{item.descricao_original}' marcado como ignorado."
         if ignorado is True
-        else f"Produto vinculado ao item '{item.descricao_original}'."
+        else f"Produto/forma vinculados ao item '{item.descricao_original}'."
     )
     criar_historico(
         nota=nota,
         evento=evento,
         descricao=descricao,
         user=user,
-        metadata={"item_id": str(item.pk), "produto_id": str(produto.pk) if produto else None},
+        metadata={
+            "item_id": str(item.pk),
+            "produto_id": str(item.produto_id) if item.produto_id else None,
+            "forma_venda_id": str(item.forma_venda_id) if item.forma_venda_id else None,
+        },
         request=request,
     )
     return item

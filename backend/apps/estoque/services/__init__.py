@@ -1,3 +1,12 @@
+from .forma_venda import (
+    ativar_forma_venda,
+    atualizar_forma_venda,
+    converter_quantidade,
+    criar_forma_venda,
+    definir_forma_padrao,
+    inativar_forma_venda,
+    soft_delete_forma_venda,
+)
 from .movimentacao import (
     ajuste_estoque,
     cancelar_movimentacao,
@@ -24,18 +33,25 @@ from .produto import (
 
 __all__ = [
     "ajuste_estoque",
+    "ativar_forma_venda",
     "ativar_produto",
+    "atualizar_forma_venda",
     "cancelar_movimentacao",
+    "converter_quantidade",
     "create_categoria",
     "create_fornecedor",
     "create_produto",
     "create_unidade",
+    "criar_forma_venda",
+    "definir_forma_padrao",
     "devolucao_estoque",
     "entrada_estoque",
+    "inativar_forma_venda",
     "inativar_produto",
     "saida_estoque",
     "soft_delete_categoria",
     "soft_delete_fornecedor",
+    "soft_delete_forma_venda",
     "soft_delete_produto",
     "soft_delete_unidade",
     "update_categoria",

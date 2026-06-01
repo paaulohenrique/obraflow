@@ -199,6 +199,19 @@ class ItemFiado(BaseModel):
         on_delete=models.PROTECT,
         related_name="itens_fiado",
     )
+    forma_venda = models.ForeignKey(
+        "estoque.FormaVendaProduto",
+        on_delete=models.SET_NULL,
+        related_name="itens_fiado",
+        null=True,
+        blank=True,
+    )
+    quantidade_informada = models.DecimalField(
+        max_digits=14,
+        decimal_places=3,
+        null=True,
+        blank=True,
+    )
     quantidade = models.DecimalField(
         max_digits=14,
         decimal_places=3,

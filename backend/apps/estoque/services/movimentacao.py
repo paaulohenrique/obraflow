@@ -8,7 +8,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 from apps.core.exceptions import require_company
 from apps.core.models import AuditLog
 from apps.core.services import create_audit_log
-from apps.estoque.models import Fornecedor, MovimentacaoEstoque, Produto
+from apps.estoque.models import FormaVendaProduto, Fornecedor, MovimentacaoEstoque, Produto
 
 
 def movimentacao_snapshot(movimentacao: MovimentacaoEstoque) -> dict[str, Any]:
@@ -32,6 +32,14 @@ def movimentacao_snapshot(movimentacao: MovimentacaoEstoque) -> dict[str, Any]:
         "movimentacao_cancelada_id": (
             str(movimentacao.movimentacao_cancelada_id)
             if movimentacao.movimentacao_cancelada_id
+            else None
+        ),
+        "forma_venda_id": (
+            str(movimentacao.forma_venda_id) if movimentacao.forma_venda_id else None
+        ),
+        "quantidade_informada": (
+            str(movimentacao.quantidade_informada)
+            if movimentacao.quantidade_informada is not None
             else None
         ),
         "idempotency_key": movimentacao.idempotency_key,
@@ -90,6 +98,8 @@ def _registrar_movimentacao(
     motivo: str = "",
     observacao: str = "",
     movimentacao_cancelada: MovimentacaoEstoque | None = None,
+    forma_venda: FormaVendaProduto | None = None,
+    quantidade_informada: Decimal | None = None,
     idempotency_key: str = "",
     metadata: dict[str, Any] | None = None,
     request=None,
@@ -114,6 +124,13 @@ def _registrar_movimentacao(
     if not produto_locked.is_active:
         raise ValidationError({"produto": "Produto inativo não pode ser movimentado."})
 
+    if forma_venda is not None and forma_venda.company_id != company_id:
+        raise ValidationError({"forma_venda": "Forma de venda não pertence à empresa."})
+    if forma_venda is not None and forma_venda.produto_id != produto_locked.pk:
+        raise ValidationError({"forma_venda": "Forma de venda não pertence a este produto."})
+    if forma_venda is not None and not forma_venda.ativo:
+        raise ValidationError({"forma_venda": "Forma de venda está inativa."})
+
     estoque_antes = produto_locked.estoque_atual
     estoque_depois = estoque_antes + quantidade_delta
     if estoque_depois < Decimal("0.000"):
@@ -136,6 +153,8 @@ def _registrar_movimentacao(
         observacao=observacao,
         created_by=user,
         movimentacao_cancelada=movimentacao_cancelada,
+        forma_venda=forma_venda,
+        quantidade_informada=quantidade_informada,
         idempotency_key=idempotency_key,
         metadata=metadata or {},
     )
@@ -164,6 +183,8 @@ def entrada_estoque(
     fornecedor: Fornecedor | None = None,
     motivo: str = "",
     observacao: str = "",
+    forma_venda: FormaVendaProduto | None = None,
+    quantidade_informada: Decimal | None = None,
     idempotency_key: str = "",
     metadata: dict[str, Any] | None = None,
     request=None,
@@ -179,6 +200,8 @@ def entrada_estoque(
         fornecedor=fornecedor,
         motivo=motivo,
         observacao=observacao,
+        forma_venda=forma_venda,
+        quantidade_informada=quantidade_informada,
         idempotency_key=idempotency_key,
         metadata=metadata,
         request=request,
@@ -192,6 +215,8 @@ def saida_estoque(
     quantidade: Decimal,
     motivo: str = "",
     observacao: str = "",
+    forma_venda: FormaVendaProduto | None = None,
+    quantidade_informada: Decimal | None = None,
     idempotency_key: str = "",
     metadata: dict[str, Any] | None = None,
     request=None,
@@ -205,6 +230,8 @@ def saida_estoque(
         quantidade_delta=-quantidade,
         motivo=motivo,
         observacao=observacao,
+        forma_venda=forma_venda,
+        quantidade_informada=quantidade_informada,
         idempotency_key=idempotency_key,
         metadata=metadata,
         request=request,

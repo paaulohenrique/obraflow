@@ -4,7 +4,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from apps.core.serializers import BaseModelSerializer
-from apps.estoque.models import Fornecedor, Produto
+from apps.estoque.models import FormaVendaProduto, Fornecedor, Produto
 from apps.financeiro.models import CategoriaFinanceira
 
 from .models import HistoricoNotaFiscalEntrada, ItemNotaFiscalEntrada, NotaFiscalEntrada
@@ -65,6 +65,30 @@ class ImportarChaveSerializer(serializers.Serializer):
 class ItemNotaListSerializer(BaseModelSerializer):
     produto_nome = serializers.CharField(source="produto.nome", read_only=True, default=None)
     produto_id = serializers.UUIDField(source="produto.id", read_only=True, default=None)
+    forma_venda_nome = serializers.SerializerMethodField()
+    forma_venda_fator = serializers.SerializerMethodField()
+    quantidade_convertida = serializers.SerializerMethodField()
+
+    def get_forma_venda_nome(self, obj) -> str | None:
+        if not obj.forma_venda_id:
+            return None
+        fv = obj.forma_venda
+        return fv.nome if fv else None
+
+    def get_forma_venda_fator(self, obj) -> str | None:
+        if not obj.forma_venda_id:
+            return None
+        fv = obj.forma_venda
+        return str(fv.fator_conversao) if fv else None
+
+    def get_quantidade_convertida(self, obj) -> str | None:
+        """Quantidade que será lançada no estoque (unidade base do produto)."""
+        if not obj.forma_venda_id:
+            return None
+        fv = obj.forma_venda
+        if not fv:
+            return None
+        return str(fv.converter(obj.quantidade))
 
     class Meta:
         model = ItemNotaFiscalEntrada
@@ -86,6 +110,10 @@ class ItemNotaListSerializer(BaseModelSerializer):
             "produto",
             "produto_id",
             "produto_nome",
+            "forma_venda",
+            "forma_venda_nome",
+            "forma_venda_fator",
+            "quantidade_convertida",
             "movimentacao_estoque",
             "ignorado",
             "is_active",
@@ -96,10 +124,15 @@ class ItemNotaListSerializer(BaseModelSerializer):
 
 
 class ItemNotaUpdateSerializer(TenantScopedSerializerMixin, serializers.Serializer):
-    tenant_scoped_fields = {"produto": Produto}
+    tenant_scoped_fields = {"produto": Produto, "forma_venda": FormaVendaProduto}
 
     produto = serializers.PrimaryKeyRelatedField(
         queryset=Produto.objects.none(),
+        required=False,
+        allow_null=True,
+    )
+    forma_venda = serializers.PrimaryKeyRelatedField(
+        queryset=FormaVendaProduto.objects.none(),
         required=False,
         allow_null=True,
     )
@@ -111,6 +144,19 @@ class ItemNotaUpdateSerializer(TenantScopedSerializerMixin, serializers.Serializ
         allow_null=True,
     )
     ignorado = serializers.BooleanField(required=False)
+
+    def validate(self, attrs):
+        produto = attrs.get("produto")
+        forma_venda = attrs.get("forma_venda")
+
+        if forma_venda is not None and produto is not None:
+            if forma_venda.produto_id != produto.pk:
+                raise ValidationError({
+                    "forma_venda": "Forma de venda não pertence ao produto selecionado."
+                })
+        if forma_venda is not None and not forma_venda.ativo:
+            raise ValidationError({"forma_venda": "Forma de venda está inativa."})
+        return attrs
 
 
 class SugestoesProdutoSerializer(BaseModelSerializer):
