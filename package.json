@@ -1,0 +1,21 @@
+{
+  "name": "obraflow",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace frontskill",
+    "dev:frontend": "npm run dev --workspace frontskill",
+    "build": "npm run build --workspace frontskill",
+    "lint": "npm run lint --workspace frontskill",
+    "type-check": "npm run type-check --workspace frontskill",
+    "backend:up": "docker compose up -d backend",
+    "backend:logs": "docker compose logs -f backend",
+    "backend:migrate": "docker compose exec backend python manage.py migrate",
+    "backend:shell": "docker compose exec backend python manage.py shell",
+    "backend:superuser": "docker compose exec backend bash scripts/create_superuser.sh",
+    "backend:test": "docker compose -f docker-compose.test.yml run --rm test"
+  }
+}

@@ -133,26 +133,21 @@ obraflow/
 │   │   ├── fiado/
 │   │   ├── financeiro/
 │   │   ├── estoque/
-│   │   ├── fiscal/
-│   │   └── cobrancas/
+│   │   └── notificacoes/
 │   ├── config/
-│   │   ├── settings/
-│   │   │   ├── base.py
-│   │   │   ├── dev.py
-│   │   │   └── prod.py
-│   │   ├── urls.py
-│   │   └── celery.py
 │   ├── Dockerfile
-│   └── requirements.txt
+│   └── manage.py
 ├── frontend/
 │   ├── src/
 │   │   ├── app/
 │   │   ├── components/
-│   │   ├── lib/
-│   │   └── hooks/
-│   ├── Dockerfile
+│   │   ├── features/
+│   │   ├── services/
+│   │   └── types/
 │   └── package.json
 ├── docker-compose.yml
+├── docker-compose.test.yml
+├── package.json
 └── README.md
 ```
 
@@ -177,7 +172,6 @@ cd obraflow
 
 ```bash
 cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env.local
 ```
 
 Edite os arquivos `.env` com suas credenciais.
@@ -190,10 +184,8 @@ docker compose up -d
 
 Isso vai iniciar:
 - Django (porta 8000)
-- PostgreSQL (porta 5432)
-- Redis (porta 6379)
-- Celery worker
-- Next.js (porta 3000)
+- PostgreSQL (porta 5433 no host)
+- Redis (porta 6380 no host)
 
 ### 4. Execute as migrations
 
@@ -257,7 +249,7 @@ NFEIO_API_KEY=
 ### Frontend (`frontend/.env.local`)
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:8000/api
+NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 ```
 
 ---
@@ -273,8 +265,9 @@ docker compose exec backend pytest
 ### Frontend
 
 ```bash
-cd frontend
 npm run lint
+npm run type-check
+npm run build
 ```
 
 ---
