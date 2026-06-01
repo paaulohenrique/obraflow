@@ -244,6 +244,19 @@ class ItemNotaFiscalEntrada(BaseModel):
         null=True,
         blank=True,
     )
+    forma_venda = models.ForeignKey(
+        "estoque.FormaVendaProduto",
+        on_delete=models.SET_NULL,
+        related_name="itens_nota_entrada",
+        null=True,
+        blank=True,
+    )
+    quantidade_informada = models.DecimalField(
+        max_digits=14,
+        decimal_places=3,
+        null=True,
+        blank=True,
+    )
     descricao_original = models.CharField(max_length=500)
     codigo_fornecedor = models.CharField(max_length=80, blank=True)
     codigo_barras = models.CharField(max_length=80, blank=True)

@@ -8,6 +8,7 @@ from rest_framework.exceptions import NotFound, PermissionDenied
 
 from .models import (
     CategoriaProduto,
+    FormaVendaProduto,
     Fornecedor,
     MovimentacaoEstoque,
     Produto,
@@ -85,6 +86,24 @@ def get_produtos(*, company_id: Any) -> QuerySet:
         _active_qs(Produto, company_id)
         .select_related("categoria", "fornecedor_principal", "unidade")
     )
+
+
+def get_forma_venda_by_id(*, company_id: Any, forma_venda_id: uuid.UUID) -> FormaVendaProduto:
+    try:
+        return (
+            _active_qs(FormaVendaProduto, company_id)
+            .select_related("produto", "produto__unidade")
+            .get(pk=forma_venda_id)
+        )
+    except (FormaVendaProduto.DoesNotExist, ValueError, TypeError, DjangoValidationError):
+        raise NotFound("Forma de venda não encontrada.")
+
+
+def get_formas_venda(*, company_id: Any, produto_id: uuid.UUID | None = None) -> QuerySet:
+    qs = _active_qs(FormaVendaProduto, company_id).select_related("produto", "produto__unidade")
+    if produto_id is not None:
+        qs = qs.filter(produto_id=produto_id)
+    return qs.order_by("produto__nome", "nome")
 
 
 def get_movimentacoes(*, company_id: Any) -> QuerySet:

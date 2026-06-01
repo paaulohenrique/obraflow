@@ -91,14 +91,33 @@ def adicionar_item_fiado(
         raise ValidationError({"status": "Somente conta aberta pode receber item."})
     validar_cliente_pode_comprar(cliente)
 
+    from apps.estoque.models import FormaVendaProduto
+
     produto: Produto = data["produto"]
     _ensure_same_company(obj=produto, company_id=user.company_id, field="produto")
     if not produto.is_active:
         raise ValidationError({"produto": "Produto inativo não pode ser vendido no fiado."})
 
-    quantidade = data["quantidade"]
+    forma_venda: FormaVendaProduto | None = data.get("forma_venda")
+    if forma_venda is not None:
+        if forma_venda.company_id != user.company_id:
+            raise ValidationError({"forma_venda": "Forma de venda não pertence à empresa."})
+        if forma_venda.produto_id != produto.pk:
+            raise ValidationError({"forma_venda": "Forma de venda não pertence a este produto."})
+        if not forma_venda.ativo:
+            raise ValidationError({"forma_venda": "Forma de venda está inativa."})
+
+    quantidade_informada: Decimal | None = data.get("quantidade_informada")
+    if forma_venda is not None and quantidade_informada is not None:
+        quantidade = forma_venda.converter(quantidade_informada)
+    else:
+        quantidade = data["quantidade"]
+        quantidade_informada = None
+
     preco_unitario = money(
-        data["preco_unitario"] if data.get("preco_unitario") is not None else produto.preco_venda
+        data["preco_unitario"]
+        if data.get("preco_unitario") is not None
+        else (forma_venda.preco_venda if forma_venda else produto.preco_venda)
     )
     subtotal = item_subtotal(quantidade=quantidade, preco_unitario=preco_unitario)
 
@@ -111,6 +130,8 @@ def adicionar_item_fiado(
         company=user.company,
         conta=conta,
         produto=produto,
+        forma_venda=forma_venda,
+        quantidade_informada=quantidade_informada,
         quantidade=quantidade,
         preco_unitario=preco_unitario,
         subtotal=subtotal,
@@ -127,6 +148,8 @@ def adicionar_item_fiado(
         quantidade=quantidade,
         motivo="Venda fiado",
         observacao=item.observacao,
+        forma_venda=forma_venda,
+        quantidade_informada=quantidade_informada,
         idempotency_key=f"fiado_item:{item.pk}",
         metadata={
             "fiado_item_id": str(item.pk),

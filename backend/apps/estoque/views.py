@@ -8,6 +8,7 @@ from apps.core.pagination import StandardResultsSetPagination
 from .filters import MovimentacaoFilter, ProdutoFilter
 from .models import (
     CategoriaProduto,
+    FormaVendaProduto,
     Fornecedor,
     MovimentacaoEstoque,
     Produto,
@@ -17,6 +18,8 @@ from .permissions import EstoquePermission
 from .selectors import (
     get_categoria_by_id,
     get_categorias,
+    get_forma_venda_by_id,
+    get_formas_venda,
     get_fornecedor_by_id,
     get_fornecedores,
     get_movimentacao_by_id,
@@ -34,6 +37,9 @@ from .serializers import (
     CategoriaSerializer,
     DevolucaoEstoqueSerializer,
     EntradaEstoqueSerializer,
+    FormaVendaProdutoCreateSerializer,
+    FormaVendaProdutoSerializer,
+    FormaVendaProdutoUpdateSerializer,
     FornecedorSerializer,
     MovimentacaoSerializer,
     ProdutoCreateSerializer,
@@ -45,18 +51,24 @@ from .serializers import (
 )
 from .services import (
     ajuste_estoque,
+    ativar_forma_venda,
     ativar_produto,
+    atualizar_forma_venda,
     cancelar_movimentacao,
     create_categoria,
     create_fornecedor,
     create_unidade,
     create_produto,
+    criar_forma_venda,
+    definir_forma_padrao,
     devolucao_estoque,
     entrada_estoque,
+    inativar_forma_venda,
     inativar_produto,
     saida_estoque,
     soft_delete_categoria,
     soft_delete_fornecedor,
+    soft_delete_forma_venda,
     soft_delete_produto,
     soft_delete_unidade,
     update_categoria,
@@ -477,3 +489,110 @@ class MovimentacaoViewSet(_TenantViewSet):
             request=request,
         )
         return Response(MovimentacaoSerializer(cancelamento).data, status=status.HTTP_201_CREATED)
+
+
+@extend_schema_view(
+    list=extend_schema(summary="Listar formas de venda", tags=["Estoque - Formas de Venda"]),
+    create=extend_schema(summary="Criar forma de venda", tags=["Estoque - Formas de Venda"]),
+    retrieve=extend_schema(summary="Detalhar forma de venda", tags=["Estoque - Formas de Venda"]),
+    update=extend_schema(summary="Atualizar forma de venda", tags=["Estoque - Formas de Venda"]),
+    partial_update=extend_schema(summary="Atualizar parcialmente forma de venda", tags=["Estoque - Formas de Venda"]),
+    destroy=extend_schema(summary="Remover forma de venda", tags=["Estoque - Formas de Venda"]),
+)
+class FormaVendaProdutoViewSet(_TenantViewSet):
+    queryset = FormaVendaProduto.objects.none()
+    serializer_class = FormaVendaProdutoSerializer
+
+    def list(self, request):
+        produto_id = request.query_params.get("produto")
+        qs = get_formas_venda(company_id=self._company_id(), produto_id=produto_id)
+        return self._paginated(qs, FormaVendaProdutoSerializer)
+
+    def create(self, request):
+        serializer = FormaVendaProdutoCreateSerializer(
+            data=request.data, context=self._serializer_context()
+        )
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        produto = data.pop("produto")
+        forma = criar_forma_venda(
+            user=request.user,
+            produto=produto,
+            data=data,
+            request=request,
+        )
+        return Response(FormaVendaProdutoSerializer(forma).data, status=status.HTTP_201_CREATED)
+
+    def retrieve(self, request, pk=None):
+        forma = get_forma_venda_by_id(company_id=self._company_id(), forma_venda_id=pk)
+        self.check_object_permissions(request, forma)
+        return Response(FormaVendaProdutoSerializer(forma).data)
+
+    def update(self, request, pk=None):
+        forma = get_forma_venda_by_id(company_id=self._company_id(), forma_venda_id=pk)
+        self.check_object_permissions(request, forma)
+        serializer = FormaVendaProdutoUpdateSerializer(forma, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        forma = atualizar_forma_venda(
+            user=request.user,
+            forma_venda=forma,
+            data=serializer.validated_data,
+            request=request,
+        )
+        return Response(FormaVendaProdutoSerializer(forma).data)
+
+    def partial_update(self, request, pk=None):
+        forma = get_forma_venda_by_id(company_id=self._company_id(), forma_venda_id=pk)
+        self.check_object_permissions(request, forma)
+        serializer = FormaVendaProdutoUpdateSerializer(forma, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        forma = atualizar_forma_venda(
+            user=request.user,
+            forma_venda=forma,
+            data=serializer.validated_data,
+            request=request,
+        )
+        return Response(FormaVendaProdutoSerializer(forma).data)
+
+    def destroy(self, request, pk=None):
+        forma = get_forma_venda_by_id(company_id=self._company_id(), forma_venda_id=pk)
+        self.check_object_permissions(request, forma)
+        soft_delete_forma_venda(user=request.user, forma_venda=forma, request=request)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        summary="Definir forma padrão",
+        description="Define esta forma de venda como padrão para o produto.",
+        responses={200: FormaVendaProdutoSerializer},
+        tags=["Estoque - Formas de Venda"],
+    )
+    @action(detail=True, methods=["post"], url_path="definir-padrao")
+    def definir_padrao(self, request, pk=None):
+        forma = get_forma_venda_by_id(company_id=self._company_id(), forma_venda_id=pk)
+        self.check_object_permissions(request, forma)
+        forma = definir_forma_padrao(user=request.user, forma_venda=forma, request=request)
+        return Response(FormaVendaProdutoSerializer(forma).data)
+
+    @extend_schema(
+        summary="Ativar forma de venda",
+        responses={200: FormaVendaProdutoSerializer},
+        tags=["Estoque - Formas de Venda"],
+    )
+    @action(detail=True, methods=["post"], url_path="ativar")
+    def ativar(self, request, pk=None):
+        forma = get_forma_venda_by_id(company_id=self._company_id(), forma_venda_id=pk)
+        self.check_object_permissions(request, forma)
+        forma = ativar_forma_venda(user=request.user, forma_venda=forma, request=request)
+        return Response(FormaVendaProdutoSerializer(forma).data)
+
+    @extend_schema(
+        summary="Inativar forma de venda",
+        responses={200: FormaVendaProdutoSerializer},
+        tags=["Estoque - Formas de Venda"],
+    )
+    @action(detail=True, methods=["post"], url_path="inativar")
+    def inativar(self, request, pk=None):
+        forma = get_forma_venda_by_id(company_id=self._company_id(), forma_venda_id=pk)
+        self.check_object_permissions(request, forma)
+        forma = inativar_forma_venda(user=request.user, forma_venda=forma, request=request)
+        return Response(FormaVendaProdutoSerializer(forma).data)

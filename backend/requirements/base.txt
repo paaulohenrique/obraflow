@@ -27,3 +27,4 @@ weasyprint==65.1
 # Utils
 python-slugify==8.0.4
 defusedxml==0.7.1
+requests==2.32.3

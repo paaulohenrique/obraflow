@@ -5,7 +5,7 @@ from rest_framework.exceptions import ValidationError
 
 from apps.clientes.models import Cliente
 from apps.core.serializers import BaseModelSerializer
-from apps.estoque.models import Produto
+from apps.estoque.models import FormaVendaProduto, Produto
 from apps.financeiro.models import ContaFinanceira
 
 from .models import ContaFiado, HistoricoFiado, ItemFiado, PagamentoFiado
@@ -121,8 +121,15 @@ class ItemFiadoSerializer(BaseModelSerializer):
     company_id = serializers.UUIDField(read_only=True)
     produto_nome = serializers.CharField(source="produto.nome", read_only=True)
     produto_sku = serializers.CharField(source="produto.sku", read_only=True)
+    forma_venda_nome = serializers.SerializerMethodField()
     created_by_nome = serializers.CharField(source="created_by.name", read_only=True)
     cancelled_by_nome = serializers.CharField(source="cancelled_by.name", read_only=True)
+
+    def get_forma_venda_nome(self, obj) -> str | None:
+        if not obj.forma_venda_id:
+            return None
+        fv = obj.forma_venda
+        return fv.nome if fv else None
 
     class Meta:
         model = ItemFiado
@@ -133,6 +140,9 @@ class ItemFiadoSerializer(BaseModelSerializer):
             "produto",
             "produto_nome",
             "produto_sku",
+            "forma_venda",
+            "forma_venda_nome",
+            "quantidade_informada",
             "quantidade",
             "preco_unitario",
             "subtotal",
@@ -156,13 +166,26 @@ class ItemFiadoSerializer(BaseModelSerializer):
 
 
 class ItemFiadoCreateSerializer(TenantScopedSerializerMixin, serializers.Serializer):
-    tenant_scoped_fields = {"produto": Produto}
+    tenant_scoped_fields = {"produto": Produto, "forma_venda": FormaVendaProduto}
 
     produto = serializers.PrimaryKeyRelatedField(queryset=Produto.objects.none())
+    forma_venda = serializers.PrimaryKeyRelatedField(
+        queryset=FormaVendaProduto.objects.none(),
+        required=False,
+        allow_null=True,
+    )
+    quantidade_informada = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=3,
+        min_value=Decimal("0.001"),
+        required=False,
+        allow_null=True,
+    )
     quantidade = serializers.DecimalField(
         max_digits=14,
         decimal_places=3,
         min_value=Decimal("0.001"),
+        required=False,
     )
     preco_unitario = serializers.DecimalField(
         max_digits=12,
@@ -173,6 +196,23 @@ class ItemFiadoCreateSerializer(TenantScopedSerializerMixin, serializers.Seriali
     )
     observacao = serializers.CharField(required=False, allow_blank=True)
     idempotency_key = serializers.CharField(max_length=120, required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        produto = attrs.get("produto")
+        forma_venda = attrs.get("forma_venda")
+        quantidade_informada = attrs.get("quantidade_informada")
+        quantidade = attrs.get("quantidade")
+
+        if forma_venda and produto and forma_venda.produto_id != produto.pk:
+            raise ValidationError({"forma_venda": "Forma de venda não pertence a este produto."})
+        if forma_venda and not forma_venda.ativo:
+            raise ValidationError({"forma_venda": "Forma de venda está inativa."})
+
+        if not quantidade and not (forma_venda and quantidade_informada):
+            raise ValidationError(
+                {"quantidade": "Informe quantidade ou forma_venda + quantidade_informada."}
+            )
+        return attrs
 
 
 class ItemFiadoCancelSerializer(RejectCompanyPayloadMixin, serializers.Serializer):

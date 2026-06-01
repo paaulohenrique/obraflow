@@ -8,6 +8,7 @@ from apps.empresas.validators import clean_cnpj, is_valid_cnpj
 
 from .models import (
     CategoriaProduto,
+    FormaVendaProduto,
     Fornecedor,
     MovimentacaoEstoque,
     Produto,
@@ -104,6 +105,98 @@ class FornecedorSerializer(RejectCompanyPayloadMixin, BaseModelSerializer):
         return cleaned
 
 
+class FormaVendaProdutoSerializer(RejectCompanyPayloadMixin, BaseModelSerializer):
+    company_id = serializers.UUIDField(read_only=True)
+    produto_id = serializers.UUIDField(read_only=True)
+    produto_nome = serializers.CharField(source="produto.nome", read_only=True)
+    quantidade_convertida_exemplo = serializers.SerializerMethodField()
+
+    def get_quantidade_convertida_exemplo(self, obj) -> str:
+        return f"1 {obj.unidade} = {obj.fator_conversao} {obj.produto.unidade.sigla if obj.produto_id else '?'}"
+
+    class Meta:
+        model = FormaVendaProduto
+        fields = [
+            "id",
+            "company_id",
+            "produto_id",
+            "produto_nome",
+            "nome",
+            "codigo",
+            "unidade",
+            "fator_conversao",
+            "preco_venda",
+            "ativo",
+            "padrao",
+            "permite_fracionado",
+            "quantidade_convertida_exemplo",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id", "company_id", "produto_id", "produto_nome",
+            "quantidade_convertida_exemplo", "is_active", "created_at", "updated_at",
+        ]
+
+
+class FormaVendaProdutoCreateSerializer(TenantScopedSerializerMixin, serializers.ModelSerializer):
+    tenant_scoped_fields = {"produto": Produto}
+    produto = serializers.PrimaryKeyRelatedField(queryset=Produto.objects.none())
+
+    class Meta:
+        model = FormaVendaProduto
+        fields = [
+            "produto",
+            "nome",
+            "codigo",
+            "unidade",
+            "fator_conversao",
+            "preco_venda",
+            "ativo",
+            "padrao",
+            "permite_fracionado",
+        ]
+        extra_kwargs = {
+            "codigo": {"required": False, "allow_blank": True},
+            "preco_venda": {"required": False},
+            "ativo": {"required": False},
+            "padrao": {"required": False},
+            "permite_fracionado": {"required": False},
+        }
+
+    def validate_fator_conversao(self, value):
+        if value <= Decimal("0"):
+            raise ValidationError("Fator de conversão deve ser maior que zero.")
+        return value
+
+
+class FormaVendaProdutoUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FormaVendaProduto
+        fields = [
+            "nome",
+            "codigo",
+            "unidade",
+            "fator_conversao",
+            "preco_venda",
+            "permite_fracionado",
+        ]
+        extra_kwargs = {
+            "nome": {"required": False},
+            "codigo": {"required": False, "allow_blank": True},
+            "unidade": {"required": False},
+            "fator_conversao": {"required": False},
+            "preco_venda": {"required": False},
+            "permite_fracionado": {"required": False},
+        }
+
+    def validate_fator_conversao(self, value):
+        if value <= Decimal("0"):
+            raise ValidationError("Fator de conversão deve ser maior que zero.")
+        return value
+
+
 class ProdutoListSerializer(BaseModelSerializer):
     company_id = serializers.UUIDField(read_only=True)
     categoria_nome = serializers.CharField(source="categoria.nome", read_only=True)
@@ -192,11 +285,21 @@ class MovimentacaoSerializer(BaseModelSerializer):
     produto_sku = serializers.CharField(source="produto.sku", read_only=True)
     fornecedor_nome = serializers.SerializerMethodField()
     created_by_nome = serializers.CharField(source="created_by.name", read_only=True)
+    forma_venda_nome = serializers.SerializerMethodField()
+    quantidade_convertida = serializers.DecimalField(
+        max_digits=14, decimal_places=3, read_only=True
+    )
 
     def get_fornecedor_nome(self, obj) -> str | None:
         if not obj.fornecedor:
             return None
         return str(obj.fornecedor)
+
+    def get_forma_venda_nome(self, obj) -> str | None:
+        if not obj.forma_venda_id:
+            return None
+        fv = obj.forma_venda
+        return fv.nome if fv else None
 
     class Meta:
         model = MovimentacaoEstoque
@@ -208,6 +311,10 @@ class MovimentacaoSerializer(BaseModelSerializer):
             "produto_sku",
             "tipo",
             "quantidade_delta",
+            "quantidade_convertida",
+            "forma_venda",
+            "forma_venda_nome",
+            "quantidade_informada",
             "estoque_antes",
             "estoque_depois",
             "custo_unitario",
@@ -232,11 +339,24 @@ class _MovimentacaoBaseSerializer(TenantScopedSerializerMixin, serializers.Seria
     tenant_scoped_fields = {
         "produto": Produto,
         "fornecedor": Fornecedor,
+        "forma_venda": FormaVendaProduto,
     }
 
     produto = serializers.PrimaryKeyRelatedField(queryset=Produto.objects.none())
     fornecedor = serializers.PrimaryKeyRelatedField(
         queryset=Fornecedor.objects.none(),
+        required=False,
+        allow_null=True,
+    )
+    forma_venda = serializers.PrimaryKeyRelatedField(
+        queryset=FormaVendaProduto.objects.none(),
+        required=False,
+        allow_null=True,
+    )
+    quantidade_informada = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=3,
+        min_value=Decimal("0.001"),
         required=False,
         allow_null=True,
     )
@@ -252,13 +372,39 @@ class _MovimentacaoBaseSerializer(TenantScopedSerializerMixin, serializers.Seria
     idempotency_key = serializers.CharField(max_length=120, required=False, allow_blank=True)
     metadata = serializers.JSONField(required=False, default=dict)
 
+    def validate(self, attrs):
+        produto = attrs.get("produto")
+        forma_venda = attrs.get("forma_venda")
+        quantidade_informada = attrs.get("quantidade_informada")
+
+        if forma_venda and produto and forma_venda.produto_id != produto.pk:
+            raise ValidationError({"forma_venda": "Forma de venda não pertence a este produto."})
+        if forma_venda and not forma_venda.ativo:
+            raise ValidationError({"forma_venda": "Forma de venda está inativa."})
+
+        # Converte quantidade via forma de venda se ambos fornecidos
+        if forma_venda and quantidade_informada:
+            from apps.estoque.services.forma_venda import converter_quantidade
+            attrs["quantidade"] = converter_quantidade(
+                forma_venda=forma_venda,
+                quantidade=quantidade_informada,
+            )
+        return attrs
+
 
 class EntradaEstoqueSerializer(_MovimentacaoBaseSerializer):
     quantidade = serializers.DecimalField(
         max_digits=14,
         decimal_places=3,
         min_value=Decimal("0.001"),
+        required=False,
     )
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        if not attrs.get("quantidade") and not (attrs.get("forma_venda") and attrs.get("quantidade_informada")):
+            raise ValidationError({"quantidade": "Informe quantidade ou forma_venda + quantidade_informada."})
+        return attrs
 
 
 class SaidaEstoqueSerializer(_MovimentacaoBaseSerializer):
@@ -266,11 +412,15 @@ class SaidaEstoqueSerializer(_MovimentacaoBaseSerializer):
         max_digits=14,
         decimal_places=3,
         min_value=Decimal("0.001"),
+        required=False,
     )
 
     def validate(self, attrs):
+        attrs = super().validate(attrs)
         attrs.pop("fornecedor", None)
         attrs.pop("custo_unitario", None)
+        if not attrs.get("quantidade") and not (attrs.get("forma_venda") and attrs.get("quantidade_informada")):
+            raise ValidationError({"quantidade": "Informe quantidade ou forma_venda + quantidade_informada."})
         return attrs
 
 
