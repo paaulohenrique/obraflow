@@ -526,6 +526,30 @@ class TestFormaVendaAPI:
         assert resp.status_code == status.HTTP_201_CREATED
         assert resp.data["nome"] == "Rolo 100m"
         assert resp.data["fator_conversao"] == "100.000000"
+        assert resp.data["preco_venda"] == "15.00"
+
+    def test_preco_forma_venda_persiste_ao_reabrir_api(self, admin_client, produto):
+        payload = {
+            "produto": str(produto.pk),
+            "nome": "Saco 50kg",
+            "codigo": "SACO",
+            "unidade": "SACO",
+            "fator_conversao": "50.000000",
+            "preco_venda": "45.00",
+            "padrao": False,
+        }
+        create = admin_client.post(self.BASE_URL, payload, format="json")
+        assert create.status_code == status.HTTP_201_CREATED
+        forma_id = create.data["id"]
+
+        detail = admin_client.get(f"{self.BASE_URL}{forma_id}/")
+        assert detail.status_code == status.HTTP_200_OK
+        assert detail.data["preco_venda"] == "45.00"
+
+        list_response = admin_client.get(self.BASE_URL + f"?produto={produto.pk}")
+        assert list_response.status_code == status.HTTP_200_OK
+        forma = next(item for item in list_response.data["results"] if item["id"] == forma_id)
+        assert forma["preco_venda"] == "45.00"
 
     def test_criar_fator_zero_rejeitado(self, admin_client, produto):
         payload = {
@@ -546,6 +570,11 @@ class TestFormaVendaAPI:
         )
         assert resp.status_code == status.HTTP_200_OK
         assert resp.data["nome"] == "Metro Linear"
+        assert resp.data["preco_venda"] == "7.50"
+
+        reaberta = admin_client.get(f"{self.BASE_URL}{forma.pk}/")
+        assert reaberta.status_code == status.HTTP_200_OK
+        assert reaberta.data["preco_venda"] == "7.50"
 
     def test_definir_padrao_via_api(self, admin_client, empresa_a, produto):
         forma1 = make_forma_venda(empresa_a, produto, codigo="M1", padrao=True)

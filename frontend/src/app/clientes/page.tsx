@@ -7,11 +7,14 @@ import { Shell } from "@/components/layout/shell"
 import { Topbar } from "@/components/layout/topbar"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { ErrorState } from "@/components/ui/error-state"
 import { Input } from "@/components/ui/input"
 import { ClienteActionDrawer } from "@/features/clientes/cliente-action-drawer"
 import { ClienteFormDialog } from "@/features/clientes/cliente-form-dialog"
 import { ClientesTable } from "@/features/clientes/clientes-table"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { clientesService } from "@/services/clientes.service"
+import { fiadoService } from "@/services/fiado.service"
 import type { Cliente } from "@/types"
 
 type Filter = "todos" | "devedores" | "bloqueados"
@@ -23,18 +26,32 @@ export default function ClientesPage() {
   const [open, setOpen] = useState(false)
   const [drawerCliente, setDrawerCliente] = useState<Cliente | null>(null)
   const [editCliente, setEditCliente] = useState<Cliente | null>(null)
+  const debouncedSearch = useDebouncedValue(search.trim(), 300)
 
   const clientesQuery = useQuery({
-    queryKey: ["clientes", { search, page, filter }],
+    queryKey: ["clientes", { search: debouncedSearch, page, filter }],
     queryFn: () =>
       clientesService.list({
         page,
         page_size: 20,
-        search,
+        search: debouncedSearch,
         ordering: "nome",
         ...(filter === "devedores" ? { saldo_devedor__gt: 0 } : {}),
         ...(filter === "bloqueados" ? { bloqueado: true } : {}),
       }),
+    staleTime: 60_000,
+  })
+
+  const inadimplentesQuery = useQuery({
+    queryKey: ["clientes", "inadimplentes", "count"],
+    queryFn: () => clientesService.inadimplentes({ page_size: 1 }),
+    staleTime: 60_000,
+  })
+
+  const fiadoDashboardQuery = useQuery({
+    queryKey: ["fiado", "dashboard", "count"],
+    queryFn: () => fiadoService.dashboard(),
+    staleTime: 60_000,
   })
 
   const total = clientesQuery.data?.count ?? 0
@@ -69,7 +86,23 @@ export default function ClientesPage() {
         onEdit={(c) => { setDrawerCliente(null); setEditCliente(c) }}
       />
 
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-6 space-y-5">
+        {/* Métricas do Cabeçalho */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-white border border-zinc-200 rounded-xl px-4 py-3 shadow-sm">
+            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Clientes Ativos</p>
+            <p className="text-lg font-bold text-zinc-900 mt-1">{total}</p>
+          </div>
+          <div className="bg-white border border-zinc-200 rounded-xl px-4 py-3 shadow-sm">
+            <p className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Inadimplentes</p>
+            <p className="text-lg font-bold text-red-500 mt-1">{inadimplentesQuery.data?.count ?? 0}</p>
+          </div>
+          <div className="bg-white border border-zinc-200 rounded-xl px-4 py-3 shadow-sm">
+            <p className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Com Fiado Aberto</p>
+            <p className="text-lg font-bold text-orange-500 mt-1">{fiadoDashboardQuery.data?.contas_abertas ?? 0}</p>
+          </div>
+        </div>
+
         <Card>
           <div className="flex flex-wrap items-center gap-3 border-b border-zinc-100 px-5 py-3.5">
             <div className="relative min-w-64 flex-1 max-w-sm">
@@ -114,11 +147,15 @@ export default function ClientesPage() {
             </div>
           </div>
 
-          <ClientesTable
-            clientes={clientes}
-            loading={clientesQuery.isLoading}
-            onClienteClick={setDrawerCliente}
-          />
+          {clientesQuery.isError ? (
+            <ErrorState onRetry={() => clientesQuery.refetch()} />
+          ) : (
+            <ClientesTable
+              clientes={clientes}
+              loading={clientesQuery.isLoading}
+              onClienteClick={setDrawerCliente}
+            />
+          )}
 
           <div className="flex items-center justify-between border-t border-zinc-100 bg-zinc-50/50 px-5 py-3">
             <span className="text-xs text-zinc-500">

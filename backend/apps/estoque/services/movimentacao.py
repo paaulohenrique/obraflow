@@ -134,7 +134,15 @@ def _registrar_movimentacao(
     estoque_antes = produto_locked.estoque_atual
     estoque_depois = estoque_antes + quantidade_delta
     if estoque_depois < Decimal("0.000"):
-        raise ValidationError({"estoque": "Estoque insuficiente para esta movimentação."})
+        quantidade_necessaria = abs(quantidade_delta)
+        quantidade_disponivel = estoque_antes
+        quantidade_faltante = quantidade_necessaria - quantidade_disponivel
+        raise ValidationError({
+            "estoque": "Estoque insuficiente para esta movimentação.",
+            "quantidade_necessaria": str(quantidade_necessaria),
+            "quantidade_disponivel": str(quantidade_disponivel),
+            "quantidade_faltante": str(quantidade_faltante)
+        })
 
     movimentacao = MovimentacaoEstoque(
         company=user.company,
@@ -189,6 +197,8 @@ def entrada_estoque(
     metadata: dict[str, Any] | None = None,
     request=None,
 ) -> MovimentacaoEstoque:
+    if forma_venda is not None and quantidade_informada is not None:
+        quantidade = forma_venda.converter(quantidade_informada)
     if quantidade <= Decimal("0.000"):
         raise ValidationError({"quantidade": "Quantidade deve ser maior que zero."})
     return _registrar_movimentacao(
@@ -221,6 +231,8 @@ def saida_estoque(
     metadata: dict[str, Any] | None = None,
     request=None,
 ) -> MovimentacaoEstoque:
+    if forma_venda is not None and quantidade_informada is not None:
+        quantidade = forma_venda.converter(quantidade_informada)
     if quantidade <= Decimal("0.000"):
         raise ValidationError({"quantidade": "Quantidade deve ser maior que zero."})
     return _registrar_movimentacao(

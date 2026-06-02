@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Dialog, DialogContent, DialogOverlay, DialogPortal, DialogTitle } from "@radix-ui/react-dialog"
 import { Command } from "cmdk"
 import { useRouter } from "next/navigation"
@@ -19,6 +19,7 @@ import {
 import { clientesService } from "@/services/clientes.service"
 import { estoqueService } from "@/services/estoque.service"
 import { formatCurrency } from "@/lib/utils"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
 
 interface SearchCommandProps {
   open: boolean
@@ -39,30 +40,20 @@ const navItems = [
 export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
   const router = useRouter()
   const [search, setSearch] = useState("")
-  const enabled = open && search.trim().length >= 2
+  const debouncedSearch = useDebouncedValue(search.trim(), 300)
+  const enabled = open && debouncedSearch.length >= 2
 
   const clientesQuery = useQuery({
-    queryKey: ["clientes", "command", search],
-    queryFn: () => clientesService.list({ search, page_size: 5 }),
+    queryKey: ["clientes", "command", debouncedSearch],
+    queryFn: () => clientesService.list({ search: debouncedSearch, page_size: 5 }),
     enabled,
   })
 
   const produtosQuery = useQuery({
-    queryKey: ["estoque", "command", search],
-    queryFn: () => estoqueService.list({ search, page_size: 5 }),
+    queryKey: ["estoque", "command", debouncedSearch],
+    queryFn: () => estoqueService.list({ search: debouncedSearch, page_size: 5, is_active: true }),
     enabled,
   })
-
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault()
-        onOpenChange(!open)
-      }
-    }
-    document.addEventListener("keydown", down)
-    return () => document.removeEventListener("keydown", down)
-  }, [open, onOpenChange])
 
   const runCommand = (href: string) => {
     router.push(href)
@@ -95,7 +86,11 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
 
             <Command.List className="overflow-y-auto p-1.5 select-none">
               <Command.Empty className="py-6 text-center text-xs text-zinc-400">
-                Nenhum resultado encontrado.
+                {enabled && (clientesQuery.isFetching || produtosQuery.isFetching)
+                  ? "Buscando clientes e produtos..."
+                  : search.trim().length < 2
+                    ? "Digite ao menos 2 caracteres."
+                    : "Nenhum resultado encontrado."}
               </Command.Empty>
 
               <Command.Group

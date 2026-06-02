@@ -12,9 +12,56 @@ import type {
 import { api } from "./api"
 import { toQueryString } from "./query-params"
 
+function filenameFromDisposition(value: string | undefined, fallback: string) {
+  if (!value) return fallback
+  const utf8Match = value.match(/filename\*=UTF-8''([^;]+)/i)
+  if (utf8Match?.[1]) return decodeURIComponent(utf8Match[1])
+  const match = value.match(/filename="?([^";]+)"?/i)
+  return match?.[1] ?? fallback
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  if (typeof window === "undefined") return
+  const url = window.URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+}
+
 export const fiadoService = {
   async list(params?: PaginationParams) {
     const response = await api.get<PaginatedResponse<ContaFiado>>(`/fiado/contas/${toQueryString(params)}`)
+    return response.data
+  },
+
+  async getContasFiadoByCliente(clienteId: string, params?: PaginationParams) {
+    const response = await api.get<PaginatedResponse<ContaFiado>>(
+      `/fiado/contas/${toQueryString({ cliente: clienteId, ordering: "-created_at", ...params })}`
+    )
+    return response.data
+  },
+
+  async getContaAbertaByCliente(clienteId: string) {
+    const response = await api.get<PaginatedResponse<ContaFiado>>(
+      `/fiado/contas/${toQueryString({ cliente: clienteId, status: "ABERTA", page_size: 1 })}`
+    )
+    return response.data.results[0] ?? null
+  },
+
+  async getHistoricoFiadoCliente(clienteId: string, params?: PaginationParams) {
+    const response = await api.get<PaginatedResponse<ContaFiado>>(
+      `/fiado/contas/${toQueryString({
+        cliente: clienteId,
+        status: "FECHADA",
+        ordering: "-data_abertura",
+        page_size: 20,
+        ...params,
+      })}`
+    )
     return response.data
   },
 
@@ -59,13 +106,20 @@ export const fiadoService = {
     return response.data
   },
 
+  async baixarPdfContaFiado(id: string) {
+    const response = await api.get<Blob>(`/fiado/contas/${id}/pdf/`, {
+      responseType: "blob",
+      headers: { Accept: "application/pdf" },
+    })
+    const filename = filenameFromDisposition(response.headers["content-disposition"], `fiado-${id.slice(0, 8)}.pdf`)
+    downloadBlob(response.data, filename)
+    return { blob: response.data, filename }
+  },
+
   async abrirOuRecuperarContaFiado(clienteId: string): Promise<ContaFiado> {
-    const existing = await api.get<PaginatedResponse<ContaFiado>>(
-      `/fiado/contas/?cliente=${clienteId}&status=ABERTA&page_size=1`
-    )
-    if (existing.data.count > 0) {
-      return existing.data.results[0]
-    }
+    const contaAberta = await fiadoService.getContaAbertaByCliente(clienteId)
+    if (contaAberta) return contaAberta
+
     const created = await api.post<ContaFiado>("/fiado/contas/", {
       cliente: clienteId,
       observacao: "Conta aberta pelo frontend",

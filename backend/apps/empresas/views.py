@@ -1,4 +1,5 @@
 from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
@@ -13,6 +14,8 @@ from .serializers import (
 )
 from .services import create_empresa, update_empresa, soft_delete_empresa
 from apps.core.pagination import StandardResultsSetPagination
+from apps.fiscal.serializers import ConfiguracaoFiscalEmpresaSerializer
+from apps.fiscal.services import get_or_create_configuracao_fiscal, update_configuracao_fiscal
 
 
 @extend_schema_view(
@@ -57,3 +60,23 @@ class EmpresaViewSet(viewsets.GenericViewSet):
         self.check_object_permissions(request, empresa)
         soft_delete_empresa(user=request.user, empresa=empresa, request=request)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        summary="Consultar ou atualizar configuração fiscal da empresa atual",
+        tags=["Empresas - Fiscal"],
+        responses={200: ConfiguracaoFiscalEmpresaSerializer},
+    )
+    @action(detail=False, methods=["get", "patch"], url_path="fiscal")
+    def fiscal(self, request):
+        if request.method == "GET":
+            config = get_or_create_configuracao_fiscal(user=request.user)
+            return Response(ConfiguracaoFiscalEmpresaSerializer(config).data)
+
+        serializer = ConfiguracaoFiscalEmpresaSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        config = update_configuracao_fiscal(
+            user=request.user,
+            data=serializer.validated_data,
+            request=request,
+        )
+        return Response(ConfiguracaoFiscalEmpresaSerializer(config).data)

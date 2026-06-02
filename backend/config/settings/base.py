@@ -195,6 +195,7 @@ CORS_ALLOW_HEADERS = [
     "x-requested-with",
     "x-request-id",
 ]
+CORS_EXPOSE_HEADERS = ["content-disposition", "x-request-id"]
 
 # API Documentation
 SPECTACULAR_SETTINGS = {

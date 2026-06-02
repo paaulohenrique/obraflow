@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { PackagePlus, X } from "lucide-react"
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useForm, useWatch } from "react-hook-form"
 import { z } from "zod"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,8 @@ import { formatNumber, toNumber } from "@/lib/format"
 import { normalizeApiError } from "@/services/api"
 import { estoqueService } from "@/services/estoque.service"
 import { fiadoService } from "@/services/fiado.service"
-import type { ContaFiado, ItemFiadoPayload } from "@/types"
+import { ProdutoAutocomplete } from "./produto-autocomplete"
+import type { ContaFiado, ItemFiadoPayload, Produto } from "@/types"
 
 const itemSchema = z.object({
   produto: z.string().min(1, "Selecione o produto."),
@@ -44,6 +45,7 @@ function fieldNameFromApi(field: string): keyof ItemFormData | null {
     forma_venda: "forma_venda",
     quantidade: "quantidade",
     quantidade_informada: "quantidade",
+    estoque: "quantidade",
     preco_unitario: "preco_unitario",
     observacao: "observacao",
   }
@@ -53,6 +55,7 @@ function fieldNameFromApi(field: string): keyof ItemFormData | null {
 export function FiadoItemDialog({ conta, open, onOpenChange }: FiadoItemDialogProps) {
   const queryClient = useQueryClient()
   const toast = useApiToast()
+  const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null)
 
   const form = useForm<ItemFormData>({
     resolver: zodResolver(itemSchema),
@@ -69,12 +72,7 @@ export function FiadoItemDialog({ conta, open, onOpenChange }: FiadoItemDialogPr
   const formaVendaId = useWatch({ control: form.control, name: "forma_venda" })
   const quantidade = useWatch({ control: form.control, name: "quantidade" })
   const precoUnitario = useWatch({ control: form.control, name: "preco_unitario" })
-
-  const produtosQuery = useQuery({
-    queryKey: ["estoque", "produtos", "fiado-select"],
-    queryFn: () => estoqueService.list({ page_size: 100, ordering: "nome" }),
-    enabled: open,
-  })
+  const prevProdutoIdRef = useRef(produtoId)
 
   const formasQuery = useQuery({
     queryKey: ["estoque", "formas-venda", produtoId],
@@ -82,37 +80,48 @@ export function FiadoItemDialog({ conta, open, onOpenChange }: FiadoItemDialogPr
     enabled: open && Boolean(produtoId),
   })
 
-  const produtos = useMemo(
-    () => (produtosQuery.data?.results ?? []).filter((produto) => produto.is_active),
-    [produtosQuery.data?.results]
-  )
   const formasVenda = useMemo(
     () => (formasQuery.data?.results ?? []).filter((forma) => forma.ativo && forma.is_active),
     [formasQuery.data?.results]
   )
-  const produto = produtos.find((item) => item.id === produtoId)
+  const produto = selectedProduto?.id === produtoId ? selectedProduto : null
   const formaVenda = formasVenda.find((item) => item.id === formaVendaId)
   const quantidadeConvertida = formaVenda ? toNumber(quantidade) * toNumber(formaVenda.fator_conversao) : 0
+  const estoqueAtual = produto ? toNumber(produto.estoque_atual) : 0
+  const estoqueInsuficiente = Boolean(produto && quantidadeConvertida > estoqueAtual)
+
+  const resetItemForm = () => {
+    setSelectedProduto(null)
+    form.reset({
+      produto: "",
+      forma_venda: "",
+      quantidade: 1,
+      preco_unitario: 0,
+      observacao: "",
+    })
+  }
 
   useEffect(() => {
-    if (!open) {
-      form.reset({
-        produto: "",
-        forma_venda: "",
-        quantidade: 1,
-        preco_unitario: 0,
-        observacao: "",
-      })
-    }
-  }, [form, open])
+    if (!open) return
+    window.setTimeout(() => window.dispatchEvent(new Event("obraflow:focus-product-search")), 80)
+  }, [open])
 
   useEffect(() => {
-    form.setValue("forma_venda", "")
-    form.clearErrors(["forma_venda", "quantidade"])
-    if (produto) {
-      form.setValue("preco_unitario", toNumber(produto.preco_venda))
+    if (produtoId !== prevProdutoIdRef.current) {
+      form.setValue("forma_venda", "")
+      form.clearErrors(["forma_venda", "quantidade"])
+      if (produto) {
+        form.setValue("preco_unitario", toNumber(produto.preco_venda), { shouldValidate: true })
+      }
+      prevProdutoIdRef.current = produtoId
     }
   }, [form, produto, produtoId])
+
+  useEffect(() => {
+    if (!open || !produtoId || formasQuery.isFetching || formaVendaId || formasVenda.length === 0) return
+    const preferred = formasVenda.find((forma) => forma.padrao) ?? formasVenda[0]
+    form.setValue("forma_venda", preferred.id, { shouldDirty: true, shouldValidate: true })
+  }, [form, formaVendaId, formasQuery.isFetching, formasVenda, open, produtoId])
 
   useEffect(() => {
     if (!formaVenda) return
@@ -120,6 +129,24 @@ export function FiadoItemDialog({ conta, open, onOpenChange }: FiadoItemDialogPr
     form.setValue("preco_unitario", preco > 0 ? preco : toNumber(produto?.preco_venda))
     form.clearErrors("forma_venda")
   }, [form, formaVenda, produto?.preco_venda])
+
+  const handleProdutoSelect = (item: Produto) => {
+    setSelectedProduto(item)
+    form.setValue("produto", item.id, { shouldDirty: true, shouldValidate: true })
+    form.clearErrors("produto")
+  }
+
+  const handleProdutoClear = () => {
+    setSelectedProduto(null)
+    form.setValue("produto", "", { shouldDirty: true, shouldValidate: true })
+    form.setValue("forma_venda", "")
+    form.setValue("preco_unitario", 0)
+  }
+
+  const handleFormaVendaSelect = (id: string) => {
+    form.setValue("forma_venda", id, { shouldDirty: true, shouldValidate: true })
+    form.clearErrors("forma_venda")
+  }
 
   const mutation = useMutation({
     mutationFn: (data: ItemFormData) => {
@@ -140,6 +167,7 @@ export function FiadoItemDialog({ conta, open, onOpenChange }: FiadoItemDialogPr
       queryClient.invalidateQueries({ queryKey: ["estoque"] })
       queryClient.invalidateQueries({ queryKey: ["estoque", "produtos", item.produto] })
       toast.success("Item adicionado")
+      resetItemForm()
       onOpenChange(false)
     },
     onError: (error) => {
@@ -161,7 +189,13 @@ export function FiadoItemDialog({ conta, open, onOpenChange }: FiadoItemDialogPr
   const disabled = conta.status !== "ABERTA"
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) resetItemForm()
+        onOpenChange(nextOpen)
+      }}
+    >
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] transition-all duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0" />
         <Dialog.Content
@@ -184,38 +218,66 @@ export function FiadoItemDialog({ conta, open, onOpenChange }: FiadoItemDialogPr
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div className="space-y-1">
+            <input type="hidden" {...form.register("produto")} />
+            <input type="hidden" {...form.register("forma_venda")} />
+
+            <div className="space-y-3">
+              <div className="space-y-1.5">
                 <label className="text-xs font-medium text-zinc-600">Produto</label>
-                <select
-                  className="h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 disabled:bg-zinc-50 disabled:opacity-60"
-                  disabled={disabled || produtosQuery.isLoading}
-                  {...form.register("produto")}
-                >
-                  <option value="">Selecione</option>
-                  {produtos.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.nome} · {formatNumber(item.estoque_atual, 3)} {item.unidade_sigla}
-                    </option>
-                  ))}
-                </select>
+                <ProdutoAutocomplete
+                  value={produto}
+                  disabled={disabled}
+                  error={Boolean(errors.produto)}
+                  onSelect={handleProdutoSelect}
+                  onClear={handleProdutoClear}
+                />
                 {errors.produto && <p className="text-xs text-red-600">{errors.produto.message}</p>}
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <label className="text-xs font-medium text-zinc-600">Forma de Venda</label>
-                <select
-                  className="h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 disabled:bg-zinc-50 disabled:opacity-60"
-                  disabled={disabled || !produtoId || formasQuery.isLoading}
-                  {...form.register("forma_venda")}
-                >
-                  <option value="">Selecione</option>
-                  {formasVenda.map((forma) => (
-                    <option key={forma.id} value={forma.id}>
-                      {forma.nome} · x{formatNumber(forma.fator_conversao, 3)}
-                    </option>
-                  ))}
-                </select>
+                {!produtoId ? (
+                  <div className="rounded-md border border-dashed border-zinc-200 px-3 py-3 text-xs text-zinc-400">
+                    Selecione um produto para carregar as formas de venda.
+                  </div>
+                ) : formasQuery.isLoading ? (
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+                    {Array.from({ length: 3 }).map((_, index) => (
+                      <div key={index} className="h-16 animate-pulse rounded-md bg-zinc-100" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-3" role="radiogroup" aria-label="Forma de venda">
+                    {formasVenda.map((forma) => {
+                      const selected = forma.id === formaVendaId
+                      const preco = toNumber(forma.preco_venda)
+
+                      return (
+                        <button
+                          key={forma.id}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => handleFormaVendaSelect(forma.id)}
+                          className={`rounded-md border px-3 py-2 text-left transition-colors ${
+                            selected
+                              ? "border-orange-300 bg-orange-50 ring-1 ring-orange-100"
+                              : "border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50"
+                          }`}
+                        >
+                          <span className="block text-xs font-semibold text-zinc-900">{forma.nome}</span>
+                          <span className="mt-1 block text-[11px] text-zinc-500">
+                            1 {forma.unidade} = {formatNumber(forma.fator_conversao, 3)} {produto?.unidade_sigla}
+                          </span>
+                          {preco > 0 && (
+                            <span className="mt-1 block text-[11px] font-medium tabular-nums text-zinc-700">
+                              {formatCurrency(preco)}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
                 {errors.forma_venda && <p className="text-xs text-red-600">{errors.forma_venda.message}</p>}
               </div>
             </div>
@@ -235,7 +297,7 @@ export function FiadoItemDialog({ conta, open, onOpenChange }: FiadoItemDialogPr
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium text-zinc-600">Preço unitário base</label>
+                <label className="text-xs font-medium text-zinc-600">Preço da forma</label>
                 <Input
                   type="number"
                   step="0.01"
@@ -254,17 +316,43 @@ export function FiadoItemDialog({ conta, open, onOpenChange }: FiadoItemDialogPr
             </div>
 
             {produto && formaVenda && (
-              <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <PackagePlus className="size-3.5 text-orange-500" />
-                  <span>
-                    {formatNumber(quantidade, 3)} {formaVenda.unidade} x {formatNumber(formaVenda.fator_conversao, 3)} {produto.unidade_sigla} =
-                  </span>
-                  <span className="font-semibold text-zinc-900">
-                    {formatNumber(quantidadeConvertida, 3)} {produto.unidade_sigla}
-                  </span>
-                  <span>· saldo atual {formatNumber(produto.estoque_atual, 3)} {produto.unidade_sigla}</span>
-                  <span>· preço {formatCurrency(precoUnitario)}/{produto.unidade_sigla}</span>
+              <div className={`rounded-lg border px-3 py-2.5 text-xs transition-all ${
+                estoqueInsuficiente 
+                  ? "border-red-200 bg-red-50 text-red-900" 
+                  : "border-zinc-200 bg-zinc-50 text-zinc-600"
+              }`}>
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <PackagePlus className={`size-3.5 ${estoqueInsuficiente ? "text-red-500" : "text-orange-500"}`} />
+                    <span>
+                      {formatNumber(quantidade, 3)} {formaVenda.unidade} × {formatNumber(formaVenda.fator_conversao, 3)} {produto.unidade_sigla} =
+                    </span>
+                    <span className="font-semibold text-zinc-900">
+                      {formatNumber(quantidadeConvertida, 3)} {produto.unidade_sigla}
+                    </span>
+                    <span>· Preço: {formatCurrency(precoUnitario)}/{formaVenda.unidade}</span>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-zinc-200/60 pt-1.5 text-[11px]">
+                    <div>
+                      <span className="text-zinc-500">Saldo atual:</span>{" "}
+                      <span className="font-medium text-zinc-700">{formatNumber(estoqueAtual, 3)} {produto.unidade_sigla}</span>
+                    </div>
+                    <div>
+                      <span className="text-zinc-500">Necessário:</span>{" "}
+                      <span className="font-medium text-zinc-700">{formatNumber(quantidadeConvertida, 3)} {produto.unidade_sigla}</span>
+                    </div>
+                    {estoqueInsuficiente ? (
+                      <div className="font-semibold text-red-600">
+                        <span>Faltam:</span>{" "}
+                        <span>{formatNumber(quantidadeConvertida - estoqueAtual, 3)} {produto.unidade_sigla}</span>
+                      </div>
+                    ) : (
+                      <div className="font-medium text-green-600">
+                        <span>Disponível</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -281,7 +369,7 @@ export function FiadoItemDialog({ conta, open, onOpenChange }: FiadoItemDialogPr
                   Cancelar
                 </Button>
               </Dialog.Close>
-              <Button type="submit" size="sm" loading={mutation.isPending} disabled={disabled}>
+              <Button type="submit" size="sm" loading={mutation.isPending} disabled={disabled || estoqueInsuficiente}>
                 Adicionar
               </Button>
             </div>

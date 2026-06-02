@@ -22,6 +22,17 @@ def item_subtotal(*, quantidade: Decimal, preco_unitario: Decimal) -> Decimal:
     return money(quantidade * preco_unitario)
 
 
+def item_quantidade_precificada(
+    *,
+    quantidade: Decimal,
+    quantidade_informada: Decimal | None = None,
+    tem_forma_venda: bool = False,
+) -> Decimal:
+    if tem_forma_venda and quantidade_informada is not None:
+        return quantidade_informada
+    return quantidade
+
+
 class NoBulkMutationQuerySet(models.QuerySet):
     def update(self, **kwargs):
         raise RuntimeError("Registros do fiado devem ser alterados via services.")
@@ -310,8 +321,13 @@ class ItemFiado(BaseModel):
         if self.quantidade <= ZERO_QTY:
             raise ValidationError({"quantidade": "Quantidade deve ser maior que zero."})
         self.preco_unitario = money(self.preco_unitario)
-        self.subtotal = item_subtotal(
+        quantidade_precificada = item_quantidade_precificada(
             quantidade=self.quantidade,
+            quantidade_informada=self.quantidade_informada,
+            tem_forma_venda=bool(self.forma_venda_id),
+        )
+        self.subtotal = item_subtotal(
+            quantidade=quantidade_precificada,
             preco_unitario=self.preco_unitario,
         )
 

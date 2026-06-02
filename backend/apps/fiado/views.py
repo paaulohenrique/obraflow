@@ -1,6 +1,9 @@
+from django.db.models import Case, IntegerField, Value, When
+from django.http import HttpResponse
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_view
 
 from apps.core.pagination import StandardResultsSetPagination
@@ -42,6 +45,7 @@ from .services import (
     registrar_pagamento_fiado,
     update_conta_fiado,
 )
+from .services.pdf import fiado_pdf_filename, render_conta_fiado_pdf
 
 
 _CONTA_ALLOWED_ORDERING = frozenset({
@@ -56,6 +60,20 @@ _CONTA_ALLOWED_ORDERING = frozenset({
     "created_at",
     "-created_at",
 })
+
+
+def _ordenar_contas_operacional(qs):
+    return (
+        qs.annotate(
+            status_operacional=Case(
+                When(status=ContaFiado.STATUS_ABERTA, then=Value(0)),
+                When(status=ContaFiado.STATUS_FECHADA, then=Value(1)),
+                default=Value(2),
+                output_field=IntegerField(),
+            )
+        )
+        .order_by("status_operacional", "cliente__nome", "id")
+    )
 
 
 class _FiadoViewSet(viewsets.GenericViewSet):
@@ -113,13 +131,16 @@ class ContaFiadoViewSet(_FiadoViewSet):
         "valor_restante",
         "created_at",
     ]
-    ordering = ["-created_at"]
+    ordering = ["status", "cliente__nome"]
 
     def list(self, request):
         filters = request.query_params.dict()
         qs = search_contas(company_id=self._company_id(), filters=filters)
-        ordering = filters.get("ordering", "-created_at")
-        qs = qs.order_by(ordering if ordering in _CONTA_ALLOWED_ORDERING else "-created_at")
+        ordering = filters.get("ordering")
+        if ordering:
+            qs = qs.order_by(ordering if ordering in _CONTA_ALLOWED_ORDERING else "-created_at")
+        else:
+            qs = _ordenar_contas_operacional(qs)
         return self._paginated(qs, ContaFiadoListSerializer)
 
     def create(self, request):
@@ -277,6 +298,23 @@ class ContaFiadoViewSet(_FiadoViewSet):
         self.check_object_permissions(request, conta)
         qs = get_historico_da_conta(company_id=self._company_id(), conta_id=conta.pk)
         return self._paginated(qs, HistoricoFiadoSerializer)
+
+    @extend_schema(
+        summary="Baixar PDF da conta fiado",
+        description="Gera um PDF com dados da conta, itens, pagamentos e totais.",
+        responses={(200, "application/pdf"): OpenApiTypes.BINARY},
+        tags=["Fiado - Contas"],
+    )
+    @action(detail=True, methods=["get"], url_path="pdf")
+    def pdf(self, request, pk=None):
+        conta = get_conta_by_id(company_id=self._company_id(), conta_id=pk)
+        self.check_object_permissions(request, conta)
+        itens = list(get_itens_da_conta(company_id=self._company_id(), conta_id=conta.pk))
+        pagamentos = list(get_pagamentos_da_conta(company_id=self._company_id(), conta_id=conta.pk))
+        content = render_conta_fiado_pdf(conta=conta, itens=itens, pagamentos=pagamentos)
+        response = HttpResponse(content, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="{fiado_pdf_filename(conta)}"'
+        return response
 
 
 class ItemFiadoViewSet(_FiadoViewSet):

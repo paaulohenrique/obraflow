@@ -2,11 +2,13 @@
 
 import Link from "next/link"
 import { ChevronRight, HandCoins } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table"
 import { formatCurrency, formatDate, formatDocument, initials } from "@/lib/utils"
+import { fiadoService } from "@/services/fiado.service"
 import type { ContaFiado } from "@/types"
 
 interface FiadoTableProps {
@@ -23,6 +25,31 @@ function contaStatus(conta: ContaFiado) {
 }
 
 export function FiadoTable({ contas, loading }: FiadoTableProps) {
+  const queryClient = useQueryClient()
+
+  const handlePrefetch = (id: string) => {
+    queryClient.prefetchQuery({
+      queryKey: ["fiado", "contas", id],
+      queryFn: () => fiadoService.get(id),
+      staleTime: 10_000,
+    })
+    queryClient.prefetchQuery({
+      queryKey: ["fiado", "contas", id, "itens"],
+      queryFn: () => fiadoService.itens(id, { page_size: 100 }),
+      staleTime: 10_000,
+    })
+    queryClient.prefetchQuery({
+      queryKey: ["fiado", "contas", id, "pagamentos"],
+      queryFn: () => fiadoService.pagamentos(id, { page_size: 100 }),
+      staleTime: 10_000,
+    })
+    queryClient.prefetchQuery({
+      queryKey: ["fiado", "contas", id, "historico"],
+      queryFn: () => fiadoService.historico(id, { page_size: 100 }),
+      staleTime: 10_000,
+    })
+  }
+
   if (loading) {
     return (
       <div className="space-y-2 p-5">
@@ -63,7 +90,11 @@ export function FiadoTable({ contas, loading }: FiadoTableProps) {
           const status = contaStatus(conta)
 
           return (
-            <Tr key={conta.id} clickable>
+            <Tr
+              key={conta.id}
+              clickable
+              onMouseEnter={() => handlePrefetch(conta.id)}
+            >
               <Td>
                 <div className="flex items-center gap-2.5">
                   <div className="flex size-7 flex-shrink-0 items-center justify-center rounded-full bg-zinc-100">

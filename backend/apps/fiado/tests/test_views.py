@@ -2,6 +2,7 @@ from decimal import Decimal
 
 import pytest
 
+from apps.estoque.models import FormaVendaProduto
 from apps.fiado.models import ContaFiado, ItemFiado, PagamentoFiado
 from apps.fiado.services import abrir_conta_fiado, adicionar_item_fiado, registrar_pagamento_fiado
 from .conftest import make_cliente
@@ -98,6 +99,31 @@ class TestFiadoContaViews:
         response = anon_client.get(CONTAS_URL)
         assert response.status_code == 401
 
+    def test_list_default_ordena_abertas_depois_fechadas_por_cliente(self, admin_client, empresa_a):
+        for nome, status in [
+            ("Bruno", ContaFiado.STATUS_FECHADA),
+            ("Maria", ContaFiado.STATUS_ABERTA),
+            ("Carlos", ContaFiado.STATUS_FECHADA),
+            ("Ana", ContaFiado.STATUS_ABERTA),
+            ("João", ContaFiado.STATUS_ABERTA),
+        ]:
+            cliente = make_cliente(empresa_a, nome=nome)
+            ContaFiado.objects.create(company=empresa_a, cliente=cliente, status=status)
+
+        response = admin_client.get(CONTAS_URL)
+
+        assert response.status_code == 200
+        assert [
+            (item["status"], item["cliente_nome"])
+            for item in response.data["results"]
+        ] == [
+            (ContaFiado.STATUS_ABERTA, "Ana"),
+            (ContaFiado.STATUS_ABERTA, "João"),
+            (ContaFiado.STATUS_ABERTA, "Maria"),
+            (ContaFiado.STATUS_FECHADA, "Bruno"),
+            (ContaFiado.STATUS_FECHADA, "Carlos"),
+        ]
+
 
 @pytest.mark.django_db
 class TestFiadoItemPagamentoViews:
@@ -133,6 +159,46 @@ class TestFiadoItemPagamentoViews:
         pagamentos_list = seller_client.get(f"{detail(CONTAS_URL, conta.pk)}pagamentos/")
         assert pagamentos_list.status_code == 200
         assert pagamentos_list.data["count"] == 1
+
+    def test_seller_adiciona_item_por_saco_via_api(
+        self,
+        seller_client,
+        seller_user,
+        cliente,
+        produto,
+    ):
+        produto.estoque_atual = Decimal("500.000")
+        produto.save(update_fields=["estoque_atual"])
+        forma_saco = FormaVendaProduto.objects.create(
+            company=produto.company,
+            produto=produto,
+            nome="Saco 50kg",
+            codigo="SACO",
+            unidade="SACO",
+            fator_conversao=Decimal("50.000000"),
+            preco_venda=Decimal("45.00"),
+            padrao=False,
+        )
+        conta = abrir_conta_fiado(user=seller_user, data={"cliente": cliente})
+
+        item_response = seller_client.post(
+            f"{detail(CONTAS_URL, conta.pk)}itens/",
+            data={
+                "produto": str(produto.pk),
+                "forma_venda": str(forma_saco.pk),
+                "quantidade_informada": "1.000",
+                "preco_unitario": "45.00",
+            },
+            format="json",
+        )
+
+        produto.refresh_from_db()
+        assert item_response.status_code == 201
+        assert item_response.data["quantidade_informada"] == "1.000"
+        assert item_response.data["quantidade"] == "50.000"
+        assert item_response.data["preco_unitario"] == "45.00"
+        assert item_response.data["subtotal"] == "45.00"
+        assert produto.estoque_atual == Decimal("450.000")
 
     def test_manager_cancela_item_e_pagamento(
         self,
@@ -199,6 +265,35 @@ class TestFiadoItemPagamentoViews:
         assert response.status_code == 200
         assert response.data["total_em_aberto"] == "50.00"
         assert response.data["contas_abertas"] == 1
+
+    def test_pdf_endpoint_retorna_conta_fechada_com_arquivo(
+        self,
+        admin_user,
+        admin_client,
+        cliente,
+        produto,
+    ):
+        conta = abrir_conta_fiado(user=admin_user, data={"cliente": cliente})
+        adicionar_item_fiado(
+            user=admin_user,
+            conta=conta,
+            data={"produto": produto, "quantidade": Decimal("1.000")},
+        )
+        conta.refresh_from_db()
+        registrar_pagamento_fiado(
+            user=admin_user,
+            conta=conta,
+            data={"valor": Decimal("50.00"), "forma_pagamento": PagamentoFiado.FORMA_PIX},
+        )
+        conta.refresh_from_db()
+
+        response = admin_client.get(f"{detail(CONTAS_URL, conta.pk)}pdf/")
+
+        assert conta.status == ContaFiado.STATUS_FECHADA
+        assert response.status_code == 200
+        assert response["Content-Type"] == "application/pdf"
+        assert "fiado-cliente-fiado" in response["Content-Disposition"]
+        assert response.content.startswith(b"%PDF")
 
     def test_list_filters_search_ordering(self, admin_user, admin_client, empresa_a, cliente, produto):
         conta = abrir_conta_fiado(user=admin_user, data={"cliente": cliente})

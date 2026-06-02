@@ -20,17 +20,41 @@ import {
 } from "lucide-react"
 import { useLogout } from "@/hooks/use-logout"
 
-const navItems = [
-  { href: "/dashboard",  label: "Dashboard",    icon: LayoutDashboard },
-  { href: "/clientes",   label: "Clientes",     icon: Users },
-  { href: "/fiado",      label: "Fiado",        icon: HandCoins },
-  { href: "/estoque",    label: "Estoque",      icon: Package },
-  { href: "/financeiro", label: "Financeiro",   icon: Wallet },
-  { href: "/boletos",    label: "Boletos",      icon: Landmark },
-  { href: "/cobrancas",  label: "Cobranças",    icon: FileStack },
-  { href: "/fiscal",     label: "Fiscal",       icon: FileText },
-  { href: "/relatorios", label: "Relatórios",   icon: BarChart3 },
-  { href: "/configuracoes", label: "Configurações", icon: Settings },
+const menuGroups = [
+  {
+    title: "",
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }
+    ]
+  },
+  {
+    title: "Operação",
+    items: [
+      { href: "/clientes", label: "Clientes", icon: Users },
+      { href: "/fiado", label: "Fiado", icon: HandCoins },
+      { href: "/estoque", label: "Estoque", icon: Package }
+    ]
+  },
+  {
+    title: "Financeiro",
+    items: [
+      { href: "/financeiro", label: "Financeiro", icon: Wallet },
+      { href: "/boletos", label: "Boletos", icon: Landmark }
+    ]
+  },
+  {
+    title: "Fiscal",
+    items: [
+      { href: "/fiscal", label: "NF-e", icon: FileText }
+    ]
+  },
+  {
+    title: "Administração",
+    items: [
+      { href: "/relatorios", label: "Relatórios", icon: BarChart3 },
+      { href: "/configuracoes", label: "Configurações", icon: Settings }
+    ]
+  }
 ]
 
 export function Sidebar() {
@@ -55,33 +79,44 @@ export function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + "/")
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "group flex items-center gap-2.5 rounded-md px-3 h-9 text-sm font-medium transition-colors duration-100",
-                active
-                  ? "bg-orange-500/15 text-orange-400"
-                  : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60"
-              )}
-            >
-              <Icon
-                className={cn(
-                  "size-4 flex-shrink-0 transition-colors",
-                  active ? "text-orange-400" : "text-zinc-500 group-hover:text-zinc-300"
-                )}
-              />
-              <span className="flex-1 truncate">{label}</span>
-              {active && (
-                <ChevronRight className="size-3 text-orange-400/60 flex-shrink-0" />
-              )}
-            </Link>
-          )
-        })}
+      <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-5">
+        {menuGroups.map((group, idx) => (
+          <div key={idx} className="space-y-1.5">
+            {group.title && (
+              <p className="px-3 text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+                {group.title}
+              </p>
+            )}
+            <div className="space-y-0.5">
+              {group.items.map(({ href, label, icon: Icon }) => {
+                const active = pathname === href || pathname.startsWith(href + "/")
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={cn(
+                      "group flex items-center gap-2.5 rounded-md px-3 h-8.5 text-xs font-semibold transition-colors duration-100",
+                      active
+                        ? "bg-orange-500/15 text-orange-400 font-bold"
+                        : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-850"
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "size-3.5 flex-shrink-0 transition-colors",
+                        active ? "text-orange-400" : "text-zinc-500 group-hover:text-zinc-300"
+                      )}
+                    />
+                    <span className="flex-1 truncate">{label}</span>
+                    {active && (
+                      <ChevronRight className="size-2.5 text-orange-400/60 flex-shrink-0" />
+                    )}
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Footer */}

@@ -16,11 +16,13 @@ export default function FinanceiroPage() {
   const dashboardQuery = useQuery({
     queryKey: ["financeiro", "dashboard"],
     queryFn: financeiroService.dashboard,
+    staleTime: 30_000,
   })
 
   const contasPagarQuery = useQuery({
     queryKey: ["financeiro", "contas-pagar", "abertas"],
     queryFn: () => financeiroService.contasPagar({ status: "ABERTA", ordering: "data_vencimento", page_size: 20 }),
+    staleTime: 30_000,
   })
 
   const contas = contasPagarQuery.data?.results ?? []

@@ -12,6 +12,7 @@ export function useCurrentUser() {
     queryFn: authService.me,
     enabled: hasAuthTokens(),
     retry: false,
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
   })
 
   const empresaQuery = useQuery({
@@ -19,6 +20,7 @@ export function useCurrentUser() {
     queryFn: () => empresasService.get(userQuery.data?.company_id ?? ""),
     enabled: Boolean(userQuery.data?.company_id),
     retry: false,
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
   })
 
   const user: AuthUser | undefined = userQuery.data

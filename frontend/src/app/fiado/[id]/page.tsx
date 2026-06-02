@@ -2,9 +2,9 @@
 
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, Banknote, CheckCircle2, CreditCard, History, Package, Plus, User, XCircle } from "lucide-react"
-import { useState } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { ArrowLeft, Banknote, CheckCircle2, CreditCard, FileDown, History, Package, Plus, Printer, User, XCircle } from "lucide-react"
+import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -16,6 +16,8 @@ import { Topbar } from "@/components/layout/topbar"
 import { cn, formatCurrency, formatDate, formatDatetime, formatDocument, initials } from "@/lib/utils"
 import { formatNumber, toNumber } from "@/lib/format"
 import { fiadoService } from "@/services/fiado.service"
+import { estoqueService } from "@/services/estoque.service"
+import { useApiToast } from "@/hooks/use-api-toast"
 
 type Tab = "itens" | "pagamentos" | "historico"
 
@@ -29,34 +31,78 @@ function contaStatus(status?: string, atrasada?: boolean, parcial?: boolean) {
 
 export default function FiadoDetalhePage() {
   const { id } = useParams<{ id: string }>()
+  const queryClient = useQueryClient()
+  const toast = useApiToast()
   const [tab, setTab] = useState<Tab>("itens")
   const [itemDialogOpen, setItemDialogOpen] = useState(false)
   const [pagamentoDialogOpen, setPagamentoDialogOpen] = useState(false)
 
+  const handlePrefetchProducts = () => {
+    queryClient.prefetchQuery({
+      queryKey: ["estoque", "produtos", "fiado-autocomplete", { search: "", page: 1 }],
+      queryFn: () =>
+        estoqueService.list({
+          page: 1,
+          page_size: 8,
+          search: "",
+          ordering: "nome",
+          is_active: true,
+        }),
+      staleTime: 30_000,
+    })
+  }
+
+  useEffect(() => {
+    const openProductSearch = () => setItemDialogOpen(true)
+    window.addEventListener("obraflow:open-product-search", openProductSearch)
+    return () => window.removeEventListener("obraflow:open-product-search", openProductSearch)
+  }, [])
+
   const contaQuery = useQuery({
     queryKey: ["fiado", "contas", id],
     queryFn: () => fiadoService.get(id),
+    staleTime: 10_000,
   })
 
   const itensQuery = useQuery({
     queryKey: ["fiado", "contas", id, "itens"],
     queryFn: () => fiadoService.itens(id, { page_size: 100 }),
     enabled: Boolean(contaQuery.data),
+    staleTime: 10_000,
   })
 
   const pagamentosQuery = useQuery({
     queryKey: ["fiado", "contas", id, "pagamentos"],
     queryFn: () => fiadoService.pagamentos(id, { page_size: 100 }),
     enabled: Boolean(contaQuery.data),
+    staleTime: 10_000,
   })
 
   const historicoQuery = useQuery({
     queryKey: ["fiado", "contas", id, "historico"],
     queryFn: () => fiadoService.historico(id, { page_size: 100 }),
     enabled: Boolean(contaQuery.data),
+    staleTime: 10_000,
+  })
+
+  const baixarPdfMutation = useMutation({
+    mutationFn: () => fiadoService.baixarPdfContaFiado(id),
+    onError: (error) => toast.error(error),
   })
 
   const conta = contaQuery.data
+  const contaAberta = conta?.status === "ABERTA"
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "F2" && contaAberta) {
+        e.preventDefault()
+        setItemDialogOpen(true)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [contaAberta])
 
   if (contaQuery.isLoading) {
     return (
@@ -94,7 +140,7 @@ export default function FiadoDetalhePage() {
   const total = toNumber(conta.valor_total)
   const pago = toNumber(conta.valor_pago)
   const pctPago = total > 0 ? Math.round((pago / total) * 100) : 0
-  const contaAberta = conta.status === "ABERTA"
+  const contaFechada = conta.status === "FECHADA"
 
   return (
     <Shell>
@@ -120,9 +166,33 @@ export default function FiadoDetalhePage() {
               disabled={!contaAberta}
               icon={<Plus className="size-3.5" />}
               onClick={() => setItemDialogOpen(true)}
+              onMouseEnter={handlePrefetchProducts}
+              className="bg-orange-500 hover:bg-orange-600 text-white font-bold"
             >
-              Item
+              Item (F2)
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<FileDown className="size-3.5" />}
+              loading={baixarPdfMutation.isPending}
+              onClick={() => baixarPdfMutation.mutate()}
+            >
+              PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<Printer className="size-3.5" />}
+              onClick={() => window.print()}
+            >
+              Imprimir
+            </Button>
+            <Link href={`/clientes/${conta.cliente}`}>
+              <Button variant="ghost" size="sm" icon={<User className="size-3.5" />}>
+                Cliente
+              </Button>
+            </Link>
             <Link href="/fiado">
               <Button variant="ghost" size="sm" icon={<ArrowLeft className="size-3.5" />}>
                 Voltar
@@ -133,64 +203,97 @@ export default function FiadoDetalhePage() {
       />
 
       <main className="flex-1 space-y-5 p-6">
+        {contaFechada && (
+          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="success">Conta finalizada</Badge>
+              <p className="text-sm font-medium text-green-900">
+                Esta conta já foi quitada e está disponível apenas para consulta.
+              </p>
+            </div>
+            <p className="mt-1 text-xs text-green-700">
+              Itens, pagamentos e histórico permanecem salvos. Você pode baixar o PDF, imprimir ou abrir uma nova conta pelo cliente.
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <Card>
-            <CardContent className="space-y-3 py-5">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 flex-shrink-0 items-center justify-center rounded-full bg-orange-100">
-                  <span className="text-sm font-bold text-orange-700">{initials(conta.cliente_nome)}</span>
+          <Card className="border border-zinc-200 bg-white">
+            <CardContent className="space-y-4 py-5 flex flex-col justify-between h-full">
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex size-10 flex-shrink-0 items-center justify-center rounded-full bg-orange-100">
+                    <span className="text-sm font-bold text-orange-700">{initials(conta.cliente_nome)}</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-zinc-950">{conta.cliente_nome}</p>
+                    <p className="text-xs text-zinc-400 font-mono">{formatDocument(conta.cliente_cpf_cnpj)}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-zinc-900">{conta.cliente_nome}</p>
-                  <p className="text-xs text-zinc-500">{formatDocument(conta.cliente_cpf_cnpj)}</p>
+                <div className="space-y-1.5 pt-2 border-t border-zinc-100 text-xs text-zinc-650">
+                  <div className="flex items-center gap-2">
+                    <User className="size-3.5 text-zinc-400" />
+                    <span>Operador: {conta.created_by_nome || "Sistema"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="size-3.5 text-zinc-400" />
+                    <span>Vencimento da fatura: {conta.data_vencimento ? formatDate(conta.data_vencimento) : "Imediato"}</span>
+                  </div>
                 </div>
               </div>
-              <div className="space-y-1.5 pt-1">
-                <div className="flex items-center gap-2 text-xs text-zinc-600">
-                  <User className="size-3.5 text-zinc-400" />
-                  {conta.created_by_nome || "Sem usuário registrado"}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-zinc-600">
-                  <CreditCard className="size-3.5 text-zinc-400" />
-                  Vencimento: {conta.data_vencimento ? formatDate(conta.data_vencimento) : "-"}
-                </div>
+              <div className="pt-2">
+                <Badge variant={status.variant} className="font-bold">{status.label.toUpperCase()}</Badge>
               </div>
-              <Badge variant={status.variant}>{status.label}</Badge>
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2">
-            <CardContent className="py-5">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <Card className="lg:col-span-2 bg-zinc-900 border-none text-white overflow-hidden relative shadow-md flex flex-col justify-between">
+            <CardContent className="py-5 flex-1 flex flex-col justify-between">
+              <div className="grid grid-cols-3 gap-4 border-b border-zinc-800 pb-4">
                 <div>
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-zinc-500">Total</p>
-                  <p className="text-2xl font-semibold tabular-nums text-zinc-900">{formatCurrency(conta.valor_total)}</p>
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">Total Lançado</p>
+                  <p className="text-2xl font-bold tabular-nums text-white">{formatCurrency(conta.valor_total)}</p>
                 </div>
                 <div>
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-zinc-500">Pago</p>
-                  <p className="text-2xl font-semibold tabular-nums text-green-600">{formatCurrency(conta.valor_pago)}</p>
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-450">Valor Pago</p>
+                  <p className="text-2xl font-bold tabular-nums text-green-400">{formatCurrency(conta.valor_pago)}</p>
                 </div>
                 <div>
-                  <p className="mb-1 text-xs font-medium uppercase tracking-wide text-zinc-500">Restante</p>
-                  <p className={cn("text-2xl font-semibold tabular-nums", toNumber(conta.valor_restante) > 0 ? "text-red-600" : "text-zinc-400")}>
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-450">Saldo Devedor</p>
+                  <p className="text-2xl font-black tabular-nums text-orange-400">
                     {formatCurrency(conta.valor_restante)}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-5">
-                <div className="mb-1.5 flex justify-between text-xs text-zinc-500">
-                  <span>Progresso do pagamento</span>
-                  <span className="font-medium text-zinc-700">{pctPago}%</span>
+              <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex-1 max-w-xs">
+                  <div className="mb-1 flex justify-between text-[10px] font-medium text-zinc-400">
+                    <span>Progresso de quitação</span>
+                    <span className="font-bold text-zinc-200">{pctPago}%</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                    <div className="h-full rounded-full bg-green-500 transition-all duration-300" style={{ width: `${Math.min(pctPago, 100)}%` }} />
+                  </div>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-zinc-100">
-                  <div className="h-full rounded-full bg-green-500 transition-all duration-500" style={{ width: `${Math.min(pctPago, 100)}%` }} />
-                </div>
+
+                {contaAberta && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => setItemDialogOpen(true)}
+                    onMouseEnter={handlePrefetchProducts}
+                    className="bg-orange-500 hover:bg-orange-600 text-white font-bold border-none flex items-center gap-1.5 shadow-sm"
+                    icon={<Plus className="size-4" />}
+                  >
+                    Lançar Produto (F2)
+                  </Button>
+                )}
               </div>
 
               {conta.observacao && (
-                <p className="mt-4 rounded-md border border-zinc-100 bg-zinc-50 px-3 py-2 text-xs text-zinc-500">
-                  {conta.observacao}
+                <p className="mt-3 rounded-md bg-zinc-850 px-3 py-1.5 text-[11px] text-zinc-400 border border-zinc-800">
+                  Obs: {conta.observacao}
                 </p>
               )}
             </CardContent>
@@ -234,6 +337,7 @@ export default function FiadoDetalhePage() {
                   disabled={!contaAberta}
                   icon={<Plus className="size-3.5" />}
                   onClick={() => setItemDialogOpen(true)}
+                  onMouseEnter={handlePrefetchProducts}
                 >
                   Adicionar
                 </Button>

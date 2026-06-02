@@ -5,6 +5,7 @@ from rest_framework.exceptions import ValidationError
 
 from apps.core.serializers import BaseModelSerializer
 from apps.empresas.validators import clean_cnpj, is_valid_cnpj
+from apps.fiscal.validators import validate_cest, validate_cfop, validate_ncm
 
 from .models import (
     CategoriaProduto,
@@ -204,6 +205,7 @@ class ProdutoListSerializer(BaseModelSerializer):
     unidade_sigla = serializers.CharField(source="unidade.sigla", read_only=True)
     estoque_baixo = serializers.BooleanField(read_only=True)
     margem_percentual = serializers.DecimalField(max_digits=8, decimal_places=2, read_only=True)
+    cadastro_fiscal_pronto = serializers.BooleanField(read_only=True)
 
     def get_fornecedor_nome(self, obj) -> str | None:
         if not obj.fornecedor_principal:
@@ -231,6 +233,19 @@ class ProdutoListSerializer(BaseModelSerializer):
             "estoque_minimo",
             "estoque_baixo",
             "margem_percentual",
+            "ncm",
+            "cfop_padrao",
+            "cst_csosn",
+            "cest",
+            "origem_mercadoria",
+            "unidade_tributavel",
+            "ean_tributavel",
+            "codigo_beneficio_fiscal",
+            "aliquota_icms",
+            "aliquota_ipi",
+            "aliquota_pis",
+            "aliquota_cofins",
+            "cadastro_fiscal_pronto",
             "is_active",
             "created_at",
             "updated_at",
@@ -265,13 +280,46 @@ class ProdutoCreateSerializer(TenantScopedSerializerMixin, serializers.ModelSeri
             "preco_venda",
             "custo_medio",
             "estoque_minimo",
+            "ncm",
+            "cfop_padrao",
+            "cst_csosn",
+            "cest",
+            "origem_mercadoria",
+            "unidade_tributavel",
+            "ean_tributavel",
+            "codigo_beneficio_fiscal",
+            "aliquota_icms",
+            "aliquota_ipi",
+            "aliquota_pis",
+            "aliquota_cofins",
         ]
         extra_kwargs = {
             "fornecedor_principal": {"required": False, "allow_null": True},
             "descricao": {"required": False, "allow_blank": True},
             "sku": {"required": False, "allow_blank": True},
             "codigo_barras": {"required": False, "allow_blank": True},
+            "ncm": {"required": False, "allow_blank": True},
+            "cfop_padrao": {"required": False, "allow_blank": True},
+            "cst_csosn": {"required": False, "allow_blank": True},
+            "cest": {"required": False, "allow_blank": True},
+            "origem_mercadoria": {"required": False},
+            "unidade_tributavel": {"required": False, "allow_blank": True},
+            "ean_tributavel": {"required": False, "allow_blank": True},
+            "codigo_beneficio_fiscal": {"required": False, "allow_blank": True},
+            "aliquota_icms": {"required": False},
+            "aliquota_ipi": {"required": False},
+            "aliquota_pis": {"required": False},
+            "aliquota_cofins": {"required": False},
         }
+
+    def validate_ncm(self, value):
+        return validate_ncm(value)
+
+    def validate_cfop_padrao(self, value):
+        return validate_cfop(value)
+
+    def validate_cest(self, value):
+        return validate_cest(value)
 
 
 class ProdutoUpdateSerializer(ProdutoCreateSerializer):

@@ -4,6 +4,8 @@ import { clientesService } from "./clientes.service"
 import { estoqueService } from "./estoque.service"
 import { fiadoService } from "./fiado.service"
 import { financeiroService } from "./financeiro.service"
+import { boletosService } from "./boletos.service"
+import { notasEntradaService } from "./notas-entrada.service"
 
 function buildFluxoCaixa(items: DashboardResumo["financeiro"]["fluxo_diario"]): FluxoCaixaItem[] {
   const byDate = new Map<string, FluxoCaixaItem>()
@@ -31,24 +33,39 @@ function buildFluxoCaixa(items: DashboardResumo["financeiro"]["fluxo_diario"]): 
 
 export const dashboardService = {
   async resumo(): Promise<DashboardResumo> {
-    const [financeiro, fiado, clientes, clientesDevedores, produtosCriticos, contasAtrasadas] =
-      await Promise.all([
-        financeiroService.dashboard(),
-        fiadoService.dashboard(),
-        clientesService.list({ page_size: 1 }),
-        clientesService.list({ saldo_devedor__gt: 0, ordering: "-saldo_devedor", page_size: 5 }),
-        estoqueService.lowStock({ page_size: 5 }),
-        financeiroService.contasPagar({ situacao: "atrasada", page_size: 5 }),
-      ])
+    const [
+      financeiro,
+      fiado,
+      clientes,
+      clientesDevedores,
+      clientesInadimplentes,
+      produtosCriticos,
+      contasAtrasadas,
+      boletosPendentes,
+      notasPendentes
+    ] = await Promise.all([
+      financeiroService.dashboard(),
+      fiadoService.dashboard(),
+      clientesService.list({ page_size: 1 }),
+      clientesService.list({ saldo_devedor__gt: 0, ordering: "-saldo_devedor", page_size: 5 }),
+      clientesService.inadimplentes({ page_size: 1 }),
+      estoqueService.lowStock({ page_size: 5 }),
+      financeiroService.contasPagar({ status: "ABERTA", ordering: "data_vencimento", page_size: 5 }), // Correção de parâmetro conforme API
+      boletosService.list({ status: "AGUARDANDO_REVISAO", page_size: 5 }),
+      notasEntradaService.list({ status: "AGUARDANDO_REVISAO", page_size: 5 }),
+    ])
 
     return {
       financeiro,
       fiado,
       clientes,
       clientesDevedores,
+      clientesInadimplentes,
       produtosCriticos,
       contasAtrasadas,
       fluxoCaixa: buildFluxoCaixa(financeiro.fluxo_diario),
+      boletosPendentes,
+      notasPendentes
     }
   },
 }

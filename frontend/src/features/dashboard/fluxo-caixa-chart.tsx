@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatCurrency } from "@/lib/utils"
+import { ErrorState } from "@/components/ui/error-state"
 import { useDashboardResumo } from "./use-dashboard-resumo"
 
 interface TooltipEntry {
@@ -46,8 +47,18 @@ function TooltipContent({
 }
 
 export function FluxoCaixaChart() {
-  const { data, isLoading } = useDashboardResumo()
+  const { data, isLoading, isError, refetch } = useDashboardResumo()
   const chartData = data?.fluxoCaixa ?? []
+
+  if (isError) {
+    return (
+      <Card>
+        <CardContent className="py-5">
+          <ErrorState onRetry={() => refetch()} />
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>

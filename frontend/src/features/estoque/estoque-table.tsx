@@ -1,21 +1,66 @@
 "use client"
 
 import Link from "next/link"
-import { AlertTriangle, ChevronRight, PackageSearch } from "lucide-react"
+import { AlertTriangle, ArrowRight, PackageOpen } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table"
-import { formatCurrency } from "@/lib/utils"
+import { cn, formatCurrency, formatDate } from "@/lib/utils"
 import { formatNumber, toNumber } from "@/lib/format"
-import type { Produto } from "@/types"
+import { estoqueService } from "@/services/estoque.service"
+import type { FormaVendaProduto, Produto } from "@/types"
 
 interface EstoqueTableProps {
   produtos: Produto[]
+  formasByProduto?: Record<string, FormaVendaProduto[]>
   loading?: boolean
 }
 
-export function EstoqueTable({ produtos, loading }: EstoqueTableProps) {
+function formatRelativeDate(dateStr: string) {
+  try {
+    const d = new Date(dateStr)
+    const now = new Date()
+    
+    // Zera horas para comparação de dias
+    const dZero = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    const nowZero = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    
+    const diffTime = nowZero.getTime() - dZero.getTime()
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24))
+
+    if (diffDays === 0) return "Hoje"
+    if (diffDays === 1) return "Ontem"
+    if (diffDays < 7) return `Há ${diffDays} dias`
+    
+    return formatDate(dateStr)
+  } catch {
+    return formatDate(dateStr)
+  }
+}
+
+export function EstoqueTable({ produtos, formasByProduto = {}, loading }: EstoqueTableProps) {
+  const queryClient = useQueryClient()
+
+  const handlePrefetch = (id: string) => {
+    queryClient.prefetchQuery({
+      queryKey: ["estoque", "produtos", id],
+      queryFn: () => estoqueService.get(id),
+      staleTime: 30_000,
+    })
+    queryClient.prefetchQuery({
+      queryKey: ["estoque", "formas-venda", id],
+      queryFn: () => estoqueService.formasVenda({ produto: id, page_size: 100 }),
+      staleTime: 30_000,
+    })
+    queryClient.prefetchQuery({
+      queryKey: ["estoque", "movimentacoes", id],
+      queryFn: () => estoqueService.movimentacoes(id, { page_size: 20 }),
+      staleTime: 30_000,
+    })
+  }
+
   if (loading) {
     return (
       <div className="space-y-2 p-5">
@@ -29,11 +74,11 @@ export function EstoqueTable({ produtos, loading }: EstoqueTableProps) {
   if (produtos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-zinc-100">
-          <PackageSearch className="size-5 text-zinc-400" />
+        <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-zinc-50 border border-zinc-150 text-zinc-400">
+          <PackageOpen className="size-5" />
         </div>
-        <p className="text-sm font-medium text-zinc-700">Nenhum produto encontrado</p>
-        <p className="mt-1 text-xs text-zinc-400">Ajuste os filtros e tente novamente.</p>
+        <p className="text-sm font-semibold text-zinc-700">Nenhum produto encontrado</p>
+        <p className="mt-1 text-xs text-zinc-400">Ajuste os filtros de busca ou de categorias.</p>
       </div>
     )
   }
@@ -42,15 +87,11 @@ export function EstoqueTable({ produtos, loading }: EstoqueTableProps) {
     <Table>
       <Thead>
         <tr>
-          <Th>SKU</Th>
           <Th>Produto</Th>
-          <Th>Categoria</Th>
-          <Th className="text-right">Saldo</Th>
-          <Th className="text-right">Mínimo</Th>
-          <Th className="text-right">Custo</Th>
-          <Th className="text-right">Venda</Th>
-          <Th className="text-right">Margem</Th>
-          <Th>Status</Th>
+          <Th className="text-right">Saldo Operacional</Th>
+          <Th>Formas de Venda</Th>
+          <Th className="text-right">Valores</Th>
+          <Th>Última Movimentação</Th>
           <Th />
         </tr>
       </Thead>
@@ -61,37 +102,87 @@ export function EstoqueTable({ produtos, loading }: EstoqueTableProps) {
           const semEstoque = estoque <= 0
           const baixo = produto.estoque_baixo || estoque <= minimo
 
+          const formas = formasByProduto[produto.id] ?? []
+          const totalFormasStr = formas.length > 0 
+            ? formas.map(f => f.nome).join(" • ") 
+            : `Unidade (${produto.unidade_sigla})`
+
           return (
-            <Tr key={produto.id} clickable>
-              <Td className="font-mono text-xs text-zinc-400">{produto.sku || produto.codigo_barras || "-"}</Td>
-              <Td>
-                <div className="flex items-center gap-2">
-                  {baixo && <AlertTriangle className="size-3.5 flex-shrink-0 text-yellow-500" />}
-                  <span className="font-medium text-zinc-900">{produto.nome}</span>
+            <Tr
+              key={produto.id}
+              clickable
+              onMouseEnter={() => handlePrefetch(produto.id)}
+              className={cn("hover:bg-zinc-50/40 transition-colors", !produto.is_active && "opacity-65")}
+            >
+              {/* Produto Typography Stack */}
+              <Td className="py-3">
+                <div className="flex items-start gap-2.5">
+                  {baixo && (
+                    <div className="mt-0.5" title="Estoque abaixo do mínimo">
+                      <AlertTriangle className="size-4 text-yellow-500 flex-shrink-0" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <span className="font-semibold text-zinc-950 block text-xs">{produto.nome}</span>
+                    <span className="mt-1 text-[10px] text-zinc-400 flex items-center gap-1.5 font-mono">
+                      <span>SKU: {produto.sku || "sem SKU"}</span>
+                      {produto.codigo_barras && (
+                        <>
+                          <span>•</span>
+                          <span>EAN: {produto.codigo_barras}</span>
+                        </>
+                      )}
+                      <span>•</span>
+                      <span className="rounded bg-zinc-100 px-1 py-0.2 text-[9px] text-zinc-500 uppercase">{produto.categoria_nome}</span>
+                    </span>
+                  </div>
                 </div>
               </Td>
-              <Td>
-                <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">
-                  {produto.categoria_nome || "-"}
+
+              {/* Saldo Operacional */}
+              <Td className="text-right py-3">
+                <span className={cn(
+                  "font-bold tabular-nums block text-xs",
+                  semEstoque ? "text-red-650" : baixo ? "text-yellow-600" : "text-zinc-900"
+                )}>
+                  {formatNumber(produto.estoque_atual, 2)} <span className="text-[10px] font-normal text-zinc-450">{produto.unidade_sigla}</span>
+                </span>
+                <span className="text-[10px] text-zinc-400 block mt-0.5">
+                  Mínimo: {formatNumber(produto.estoque_minimo, 1)}
                 </span>
               </Td>
-              <Td className="text-right font-semibold tabular-nums text-zinc-900">
-                {formatNumber(produto.estoque_atual, 3)} <span className="text-xs font-normal text-zinc-400">{produto.unidade_sigla}</span>
+
+              {/* Formas de Venda */}
+              <Td className="py-3 max-w-[200px] truncate text-xs text-zinc-600">
+                <span className="font-medium" title={totalFormasStr}>{totalFormasStr}</span>
               </Td>
-              <Td className="text-right tabular-nums text-zinc-400">{formatNumber(produto.estoque_minimo, 3)}</Td>
-              <Td className="text-right tabular-nums text-zinc-600">{formatCurrency(produto.preco_compra)}</Td>
-              <Td className="text-right font-medium tabular-nums text-zinc-900">{formatCurrency(produto.preco_venda)}</Td>
-              <Td className="text-right">
-                <span className="font-medium tabular-nums text-green-600">{formatNumber(produto.margem_percentual, 2)}%</span>
+
+              {/* Valores Compra/Venda e Margem */}
+              <Td className="text-right py-3">
+                <span className="font-semibold tabular-nums block text-xs text-zinc-950">
+                  {formatCurrency(produto.preco_venda)}
+                </span>
+                <span className="text-[10px] text-zinc-400 block mt-0.5 tabular-nums">
+                  Custo: {formatCurrency(produto.preco_compra)} • <span className="text-green-600 font-medium">Margem {formatNumber(produto.margem_percentual, 1)}%</span>
+                </span>
               </Td>
-              <Td>
-                <Badge variant={semEstoque ? "error" : baixo ? "warning" : "success"}>
-                  {semEstoque ? "Sem estoque" : baixo ? "Baixo" : "Normal"}
-                </Badge>
+
+              {/* Última Movimentação & Status */}
+              <Td className="py-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant={!produto.is_active ? "outline" : semEstoque ? "error" : baixo ? "warning" : "success"}>
+                    {!produto.is_active ? "Inativo" : semEstoque ? "Sem estoque" : baixo ? "Baixo" : "Normal"}
+                  </Badge>
+                  <span className="text-xs text-zinc-500">
+                    {formatRelativeDate(produto.updated_at)}
+                  </span>
+                </div>
               </Td>
-              <Td>
-                <Link href={`/estoque/${produto.id}`}>
-                  <Button variant="ghost" size="xs" icon={<ChevronRight className="size-3.5" />} />
+
+              {/* Ação */}
+              <Td className="py-3 text-right">
+                <Link href={`/estoque/${produto.id}`} passHref>
+                  <Button variant="ghost" size="xs" icon={<ArrowRight className="size-3.5" />} />
                 </Link>
               </Td>
             </Tr>

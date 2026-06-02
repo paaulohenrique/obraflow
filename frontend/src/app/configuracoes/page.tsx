@@ -1,6 +1,8 @@
 "use client"
 
-import { Building2, Lock, Mail, Shield, User } from "lucide-react"
+import Link from "next/link"
+import { Building2, FileCog, Lock, Mail, Shield, User } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Shell } from "@/components/layout/shell"
@@ -39,6 +41,21 @@ export default function ConfiguracoesPage() {
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileCog className="size-4 text-orange-500" />
+                <h3 className="text-sm font-semibold text-zinc-900">Fiscal</h3>
+              </div>
+              <Link href="/configuracoes/fiscal">
+                <Button size="sm" variant="outline">Abrir</Button>
+              </Link>
+            </CardHeader>
+            <CardContent className="text-sm text-zinc-600">
+              Base cadastral para futura emissão de NF-e modelo 55.
             </CardContent>
           </Card>
 

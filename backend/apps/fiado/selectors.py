@@ -35,6 +35,8 @@ def get_itens(*, company_id: Any) -> QuerySet:
         .select_related(
             "conta",
             "produto",
+            "produto__unidade",
+            "forma_venda",
             "created_by",
             "cancelled_by",
             "movimentacao_estoque",
