@@ -14,9 +14,10 @@ import {
   BarChart3,
   Settings,
   Landmark,
-  FileStack,
   ChevronRight,
   LogOut,
+  ShoppingCart,
+  ShoppingBag,
 } from "lucide-react"
 import { useLogout } from "@/hooks/use-logout"
 
@@ -25,6 +26,13 @@ const menuGroups = [
     title: "",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }
+    ]
+  },
+  {
+    title: "Balcão",
+    items: [
+      { href: "/pdv", label: "PDV", icon: ShoppingCart },
+      { href: "/vendas", label: "Vendas", icon: ShoppingBag },
     ]
   },
   {

@@ -794,6 +794,86 @@ export interface ProductSuggestion {
   similarity: number | null
 }
 
+// ─── PDV / Vendas ─────────────────────────────────────────────────────────────
+
+export type FormaPagamentoPDV = "DINHEIRO" | "PIX" | "CARTAO" | "TRANSFERENCIA"
+export type StatusVenda = "CONCLUIDA" | "CANCELADA"
+
+export interface ItemVendaResponse {
+  id: string
+  produto: string
+  produto_nome: string
+  produto_sku: string
+  produto_unidade_sigla: string
+  forma_venda: string | null
+  forma_venda_nome: string | null
+  quantidade_informada: ApiDecimal
+  quantidade: ApiDecimal
+  preco_unitario: ApiDecimal
+  subtotal: ApiDecimal
+  created_at: string
+}
+
+export interface Venda {
+  id: string
+  numero: string
+  cliente: string | null
+  cliente_nome: string | null
+  status: StatusVenda
+  valor_subtotal: ApiDecimal
+  desconto: ApiDecimal
+  valor_total: ApiDecimal
+  forma_pagamento: FormaPagamentoPDV
+  conta_financeira: string
+  conta_financeira_nome: string
+  total_itens: number
+  itens?: ItemVendaResponse[]
+  observacao?: string
+  created_by: string | null
+  created_by_nome: string | null
+  cancelled_by?: string | null
+  cancelled_at?: string | null
+  motivo_cancelamento?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ItemVendaPayload {
+  produto: string
+  forma_venda?: string | null
+  quantidade_informada: ApiDecimal
+  preco_unitario: ApiDecimal
+}
+
+export interface CriarVendaPayload {
+  itens: ItemVendaPayload[]
+  forma_pagamento: FormaPagamentoPDV
+  conta_financeira: string
+  cliente?: string | null
+  desconto?: ApiDecimal
+  observacao?: string
+}
+
+export interface DashboardVendas {
+  total_hoje: ApiDecimal
+  count_hoje: number
+  total_mes: ApiDecimal
+  count_mes: number
+  ticket_medio: ApiDecimal
+}
+
+// Item local no carrinho do PDV (estado client-side, não enviado à API)
+export interface CartItem {
+  cartId: string           // UUID local para controle da lista
+  produto: Produto
+  formaVenda: FormaVendaProduto | null
+  quantidadeInformada: number
+  quantidade: number       // convertida para unidade base
+  precoUnitario: number
+  subtotal: number
+}
+
 export interface NotaHistorico {
   id: string
   evento: string
