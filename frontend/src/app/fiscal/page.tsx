@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { FileCode, PackageOpen } from "lucide-react"
+import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -11,8 +12,11 @@ import { Shell } from "@/components/layout/shell"
 import { Topbar } from "@/components/layout/topbar"
 import { formatCurrency, formatDate, formatDocument } from "@/lib/utils"
 import { notasEntradaService } from "@/services/documentos.service"
+import { NotaReviewDrawer } from "@/features/fiscal/nota-review-drawer"
 
 export default function FiscalPage() {
+  const [selectedNotaId, setSelectedNotaId] = useState<string | null>(null)
+
   const dashboardQuery = useQuery({
     queryKey: ["notas-entrada", "dashboard"],
     queryFn: notasEntradaService.dashboard,
@@ -69,15 +73,20 @@ export default function FiscalPage() {
                 </Thead>
                 <Tbody>
                   {notas.map((nota) => (
-                    <Tr key={nota.id}>
+                    <Tr
+                      key={nota.id}
+                      clickable
+                      onClick={() => setSelectedNotaId(nota.id)}
+                      className="hover:bg-zinc-50/40 transition-colors"
+                    >
                       <Td className="font-mono text-xs font-semibold text-zinc-700">{nota.numero || "-"}</Td>
                       <Td className="font-medium text-zinc-900">{nota.fornecedor_nome_final || "-"}</Td>
                       <Td className="font-mono text-xs text-zinc-500">{nota.fornecedor_cnpj_xml ? formatDocument(nota.fornecedor_cnpj_xml) : "-"}</Td>
-                      <Td className="text-right tabular-nums">{formatCurrency(nota.valor_total)}</Td>
+                      <Td className="text-right tabular-nums font-semibold text-zinc-955">{formatCurrency(nota.valor_total)}</Td>
                       <Td className="text-xs text-zinc-500">{nota.data_emissao ? formatDate(nota.data_emissao) : "-"}</Td>
-                      <Td className="text-right tabular-nums">
+                      <Td className="text-right tabular-nums text-xs text-zinc-650">
                         {nota.itens_total}
-                        {nota.itens_sem_produto > 0 && <span className="ml-1 text-red-600">({nota.itens_sem_produto})</span>}
+                        {nota.itens_sem_produto > 0 && <span className="ml-1 text-red-600 font-bold">({nota.itens_sem_produto})</span>}
                       </Td>
                       <Td>
                         <Badge variant={nota.status === "CONFIRMADA" ? "success" : nota.status === "REJEITADA" ? "error" : "warning"}>
@@ -91,6 +100,16 @@ export default function FiscalPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Mapeamento lateral de nota fiscal */}
+        <NotaReviewDrawer
+          notaId={selectedNotaId}
+          onClose={() => {
+            setSelectedNotaId(null)
+            dashboardQuery.refetch()
+            notasQuery.refetch()
+          }}
+        />
       </main>
     </Shell>
   )

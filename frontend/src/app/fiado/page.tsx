@@ -26,6 +26,7 @@ export default function FiadoPage() {
   const dashboardQuery = useQuery({
     queryKey: ["fiado", "dashboard"],
     queryFn: fiadoService.dashboard,
+    staleTime: 30_000,
   })
 
   const contasQuery = useQuery({
@@ -39,6 +40,7 @@ export default function FiadoPage() {
         ...(filter === "atrasadas" ? { situacao: "atrasada" } : {}),
         ...(filter === "fechadas" ? { status: "FECHADA" } : {}),
       }),
+    staleTime: 30_000,
   })
 
   const totalPages = contasQuery.data?.total_pages ?? 1

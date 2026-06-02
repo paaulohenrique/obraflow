@@ -433,3 +433,25 @@ class TestAuditoriaConversao:
         )
         prod.refresh_from_db()
         assert prod.estoque_atual == Decimal("1000.000")
+
+    def test_erro_estoque_insuficiente_detalhado(self, admin_user, empresa_a, categoria, unidade):
+        prod = make_produto(
+            empresa_a, categoria=categoria, unidade=unidade,
+            nome="Produto Teste Erro", sku="ERR-01", codigo_barras="E01",
+            estoque_atual=Decimal("40.000")
+        )
+        f_saco = forma(empresa_a, prod, "Saco 50kg", "SACO", "SACO", Decimal("50"), padrao=True)
+
+        with pytest.raises(ValidationError) as exc_info:
+            saida_estoque(
+                user=admin_user, produto=prod,
+                quantidade=Decimal("500.000"),
+                forma_venda=f_saco, quantidade_informada=Decimal("10.000"),
+            )
+        
+        errors = exc_info.value.detail
+        assert "estoque" in errors
+        assert errors["estoque"] == "Estoque insuficiente para esta movimentação."
+        assert errors["quantidade_necessaria"] == "500.000"
+        assert errors["quantidade_disponivel"] == "40.000"
+        assert errors["quantidade_faltante"] == "460.000"

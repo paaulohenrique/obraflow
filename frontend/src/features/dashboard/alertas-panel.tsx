@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn, formatCurrency } from "@/lib/utils"
+import { ErrorState } from "@/components/ui/error-state"
 import { useDashboardResumo } from "./use-dashboard-resumo"
 
 const iconBg: Record<"error" | "warning" | "info", string> = {
@@ -15,7 +16,17 @@ const iconBg: Record<"error" | "warning" | "info", string> = {
 }
 
 export function AlertasPanel() {
-  const { data, isLoading } = useDashboardResumo()
+  const { data, isLoading, isError, refetch } = useDashboardResumo()
+
+  if (isError) {
+    return (
+      <Card>
+        <CardContent className="py-5">
+          <ErrorState onRetry={() => refetch()} />
+        </CardContent>
+      </Card>
+    )
+  }
 
   const alertas = [
     {

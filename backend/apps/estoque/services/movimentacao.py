@@ -134,7 +134,15 @@ def _registrar_movimentacao(
     estoque_antes = produto_locked.estoque_atual
     estoque_depois = estoque_antes + quantidade_delta
     if estoque_depois < Decimal("0.000"):
-        raise ValidationError({"estoque": "Estoque insuficiente para esta movimentação."})
+        quantidade_necessaria = abs(quantidade_delta)
+        quantidade_disponivel = estoque_antes
+        quantidade_faltante = quantidade_necessaria - quantidade_disponivel
+        raise ValidationError({
+            "estoque": "Estoque insuficiente para esta movimentação.",
+            "quantidade_necessaria": str(quantidade_necessaria),
+            "quantidade_disponivel": str(quantidade_disponivel),
+            "quantidade_faltante": str(quantidade_faltante)
+        })
 
     movimentacao = MovimentacaoEstoque(
         company=user.company,

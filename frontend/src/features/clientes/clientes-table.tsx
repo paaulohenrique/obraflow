@@ -2,12 +2,15 @@
 
 import Link from "next/link"
 import { ChevronRight, Search } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table"
 import { formatCurrency, formatDocument, formatPhone, initials } from "@/lib/utils"
 import { toNumber } from "@/lib/format"
+import { clientesService } from "@/services/clientes.service"
+import { fiadoService } from "@/services/fiado.service"
 import type { Cliente } from "@/types"
 
 interface ClientesTableProps {
@@ -17,6 +20,26 @@ interface ClientesTableProps {
 }
 
 export function ClientesTable({ clientes, loading, onClienteClick }: ClientesTableProps) {
+  const queryClient = useQueryClient()
+
+  const handlePrefetch = (id: string) => {
+    queryClient.prefetchQuery({
+      queryKey: ["clientes", id],
+      queryFn: () => clientesService.get(id),
+      staleTime: 60_000,
+    })
+    queryClient.prefetchQuery({
+      queryKey: ["fiado", "cliente", id, "aberta"],
+      queryFn: () => fiadoService.getContaAbertaByCliente(id),
+      staleTime: 10_000,
+    })
+    queryClient.prefetchQuery({
+      queryKey: ["fiado", "cliente", id, "fechadas"],
+      queryFn: () => fiadoService.getHistoricoFiadoCliente(id, { page_size: 20 }),
+      staleTime: 10_000,
+    })
+  }
+
   if (loading) {
     return (
       <div className="space-y-2 p-5">
@@ -63,6 +86,7 @@ export function ClientesTable({ clientes, loading, onClienteClick }: ClientesTab
               key={cliente.id}
               clickable
               onClick={() => onClienteClick?.(cliente)}
+              onMouseEnter={() => handlePrefetch(cliente.id)}
             >
               <Td>
                 <div className="flex items-center gap-2.5">

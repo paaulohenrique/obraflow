@@ -35,21 +35,25 @@ export default function EstoquePage() {
         ...(categoria ? { categoria } : {}),
         ...(filter === "baixo" ? { estoque_baixo: true } : {}),
       }),
+    staleTime: 30_000,
   })
 
   const baixoQuery = useQuery({
     queryKey: ["estoque", "baixo", "count"],
     queryFn: () => estoqueService.lowStock({ page_size: 1 }),
+    staleTime: 30_000,
   })
 
   const formasQuery = useQuery({
     queryKey: ["estoque", "formas-venda", "list"],
     queryFn: () => estoqueService.formasVenda({ page_size: 500 }),
+    staleTime: 30_000,
   })
 
   const categoriasQuery = useQuery({
     queryKey: ["estoque", "categorias", "chips"],
     queryFn: () => estoqueService.categorias({ page_size: 20, ordering: "nome" }),
+    staleTime: 30_000,
   })
 
   const total = produtosQuery.data?.count ?? 0

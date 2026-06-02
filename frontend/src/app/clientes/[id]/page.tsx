@@ -29,18 +29,21 @@ export default function ClienteDetalhePage() {
   const clienteQuery = useQuery({
     queryKey: ["clientes", id],
     queryFn: () => clientesService.get(id),
+    staleTime: 60_000,
   })
 
   const contaAbertaQuery = useQuery({
     queryKey: ["fiado", "cliente", id, "aberta"],
     queryFn: () => fiadoService.getContaAbertaByCliente(id),
     enabled: Boolean(clienteQuery.data),
+    staleTime: 10_000,
   })
 
   const historicoFiadoQuery = useQuery({
     queryKey: ["fiado", "cliente", id, "fechadas"],
     queryFn: () => fiadoService.getHistoricoFiadoCliente(id, { page_size: 20 }),
     enabled: Boolean(clienteQuery.data),
+    staleTime: 10_000,
   })
 
   const abrirFiadoMutation = useMutation({

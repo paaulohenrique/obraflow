@@ -370,4 +370,214 @@ export interface DashboardResumo {
   produtosCriticos: PaginatedResponse<Produto>
   contasAtrasadas: PaginatedResponse<ContaPagar>
   fluxoCaixa: FluxoCaixaItem[]
+  boletosPendentes?: PaginatedResponse<BoletoOCR>
+  notasPendentes?: PaginatedResponse<NotaEntrada>
 }
+
+export interface Fornecedor {
+  id: string
+  company_id: string
+  nome: string
+  cnpj: string
+  telefone?: string
+  email?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface CategoriaFinanceira {
+  id: string
+  company_id: string
+  nome: string
+  tipo: "RECEITA" | "DESPESA"
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface BoletoOCR {
+  id: string
+  company_id: string
+  arquivo_nome_original: string
+  tipo_arquivo: string
+  content_type: string
+  tamanho_bytes: number
+  status: "ENVIADO" | "PROCESSANDO" | "AGUARDANDO_REVISAO" | "CONFIRMADO" | "REJEITADO" | "ERRO"
+  fornecedor: string | null
+  fornecedor_nome: string | null
+  fornecedor_nome_final: string
+  banco_codigo: string | null
+  banco_nome: string | null
+  valor: ApiDecimal | null
+  vencimento: string | null
+  linha_digitavel: string | null
+  codigo_barras: string | null
+  confianca_ocr: ApiDecimal | null
+  conta_pagar: string | null
+  created_by: string | null
+  created_by_nome: string | null
+  erro_codigo: string | null
+  erro_mensagem: string | null
+  tentativas_ocr: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface BoletoOCRDetail extends BoletoOCR {
+  arquivo: string | null
+  preview_image: string | null
+  preview_pages: number
+  sha256: string | null
+  documento_beneficiario: string | null
+  documento_pagador: string | null
+  data_emissao: string | null
+  texto_ocr: string | null
+  payload_ocr: Record<string, unknown> | null
+  raw_provider_response: Record<string, unknown> | null
+  campos_extraidos: Record<string, unknown> | null
+  campos_confianca: Record<string, unknown> | null
+  processado_por: string | null
+  processado_por_nome: string | null
+  confirmado_por: string | null
+  confirmado_por_nome: string | null
+  rejeitado_por: string | null
+  rejeitado_por_nome: string | null
+  ocr_started_at: string | null
+  ocr_finished_at: string | null
+  confirmado_at: string | null
+  rejeitado_at: string | null
+  motivo_rejeicao: string | null
+  observacao: string | null
+  idempotency_key: string | null
+}
+
+export interface HistoricoBoleto {
+  id: string
+  evento: string
+  descricao: string
+  before: Record<string, unknown> | null
+  after: Record<string, unknown> | null
+  metadata: Record<string, unknown>
+  request_id: string | null
+  created_by: string | null
+  created_by_nome: string | null
+  created_at: string
+}
+
+export interface BoletoDashboard {
+  boletos_enviados_hoje: number
+  boletos_processados_hoje: number
+  pendentes_revisao: number
+  ocrs_com_erro: number
+  contas_pagar_geradas: number
+  valor_total_identificado: ApiDecimal
+  valor_total_confirmado: ApiDecimal
+  taxa_sucesso_ocr: ApiDecimal
+  confianca_media: ApiDecimal
+  vencimentos_7_dias: number
+  vencimentos_30_dias: number
+}
+
+export interface ConfirmarBoletoPayload {
+  beneficiario_nome?: string
+  beneficiario_documento?: string
+  banco_codigo?: string
+  banco_nome?: string
+  valor: ApiDecimal
+  vencimento: string
+  data_emissao?: string
+  linha_digitavel?: string
+  codigo_barras?: string
+  categoria: string
+  fornecedor?: string | null
+  observacao?: string
+}
+
+export interface RejeitarBoletoPayload {
+  motivo: string
+}
+
+export interface NotaEntrada {
+  id: string
+  status: string
+  numero: string
+  serie: string
+  modelo: string
+  data_emissao: string | null
+  fornecedor_nome_final: string
+  fornecedor_cnpj_xml: string
+  fornecedor: string | null
+  valor_total: ApiDecimal
+  itens_total: number
+  itens_sem_produto: number
+  created_at: string
+}
+
+export interface DashboardNotasEntrada {
+  notas_importadas_hoje: number
+  aguardando_revisao: number
+  confirmadas_mes: number
+  rejeitadas_mes: number
+  valor_total_importado_mes: ApiDecimal
+  valor_total_confirmado_mes: ApiDecimal
+  movimentacoes_estoque_geradas_mes: number
+  contas_pagar_criadas_mes: number
+  fornecedores_novos_detectados: number
+  itens_sem_produto_pendentes: number
+}
+
+export interface NotaItem {
+  id: string
+  ordem: number
+  descricao_original: string
+  codigo_fornecedor: string
+  codigo_barras: string
+  ncm: string
+  cfop: string
+  unidade: string
+  quantidade: ApiDecimal
+  valor_unitario: ApiDecimal
+  valor_total_item: ApiDecimal
+  custo_unitario: ApiDecimal
+  valor_ipi_item: ApiDecimal
+  valor_icms_item: ApiDecimal
+  produto: string | null
+  produto_id: string | null
+  produto_nome: string | null
+  forma_venda: string | null
+  forma_venda_nome: string | null
+  forma_venda_fator: string | null
+  quantidade_convertida: string | null
+  movimentacao_estoque: string | null
+  ignorado: boolean
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ProductSuggestion {
+  id: string
+  nome: string
+  sku: string | null
+  codigo_barras: string | null
+  estoque_atual: ApiDecimal
+  preco_compra: ApiDecimal
+  similarity: number | null
+}
+
+export interface NotaHistorico {
+  id: string
+  evento: string
+  descricao: string
+  before: unknown
+  after: unknown
+  metadata: unknown
+  request_id: string
+  created_by: string
+  created_by_nome: string
+  created_at: string
+}
+
+

@@ -21,18 +21,21 @@ export default function ProdutoDetalhePage() {
   const produtoQuery = useQuery({
     queryKey: ["estoque", "produtos", id],
     queryFn: () => estoqueService.get(id),
+    staleTime: 30_000,
   })
 
   const formasQuery = useQuery({
     queryKey: ["estoque", "formas-venda", id],
     queryFn: () => estoqueService.formasVenda({ produto: id, page_size: 100 }),
     enabled: Boolean(produtoQuery.data),
+    staleTime: 30_000,
   })
 
   const movimentacoesQuery = useQuery({
     queryKey: ["estoque", "movimentacoes", id],
     queryFn: () => estoqueService.movimentacoes(id, { page_size: 20 }),
     enabled: Boolean(produtoQuery.data),
+    staleTime: 30_000,
   })
 
   const produto = produtoQuery.data

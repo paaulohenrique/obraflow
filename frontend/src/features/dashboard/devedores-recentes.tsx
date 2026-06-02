@@ -6,11 +6,22 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatCurrency, initials } from "@/lib/utils"
+import { ErrorState } from "@/components/ui/error-state"
 import { useDashboardResumo } from "./use-dashboard-resumo"
 
 export function DevedoresRecentes() {
-  const { data, isLoading } = useDashboardResumo()
+  const { data, isLoading, isError, refetch } = useDashboardResumo()
   const devedores = data?.clientesDevedores.results ?? []
+
+  if (isError) {
+    return (
+      <Card>
+        <CardContent className="py-5">
+          <ErrorState onRetry={() => refetch()} />
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>
