@@ -1,9 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Bell, Search, Building2, ChevronDown, LogOut } from "lucide-react"
+import { Search, Building2, LogOut } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { SearchCommand } from "@/components/ui/search-command"
 import { useCurrentUser } from "@/hooks/use-current-user"
 import { useLogout } from "@/hooks/use-logout"
 import { Badge } from "@/components/ui/badge"
@@ -15,7 +13,6 @@ interface TopbarProps {
 }
 
 export function Topbar({ title, subtitle, actions }: TopbarProps) {
-  const [commandOpen, setCommandOpen] = useState(false)
   const { user, empresa } = useCurrentUser()
   const logout = useLogout()
   const companyName = empresa?.nome_fantasia || empresa?.razao_social || "MP Construções"
@@ -35,7 +32,7 @@ export function Topbar({ title, subtitle, actions }: TopbarProps) {
 
       {/* Search global */}
       <button
-        onClick={() => setCommandOpen(true)}
+        onClick={() => window.dispatchEvent(new Event("obraflow:open-command"))}
         className={cn(
           "hidden md:flex items-center gap-2 h-8 px-3 rounded-md border border-zinc-200",
           "bg-zinc-50 text-zinc-400 text-sm transition-colors hover:border-zinc-300",
@@ -44,17 +41,14 @@ export function Topbar({ title, subtitle, actions }: TopbarProps) {
       >
         <Search className="size-3.5 flex-shrink-0" />
         <span className="flex-1 text-left text-xs">Buscar...</span>
-        <kbd className="text-[10px] font-medium bg-zinc-200 text-zinc-500 px-1.5 py-0.5 rounded">⌘K</kbd>
+        <kbd className="text-[10px] font-medium bg-zinc-200 text-zinc-500 px-1.5 py-0.5 rounded">Ctrl K</kbd>
       </button>
-
-      <SearchCommand open={commandOpen} onOpenChange={setCommandOpen} />
 
       {/* Empresa atual */}
-      <button className="hidden lg:flex items-center gap-1.5 h-8 px-3 rounded-md border border-zinc-200 text-xs font-medium text-zinc-700 hover:bg-zinc-50 transition-colors">
+      <div className="hidden lg:flex items-center gap-1.5 h-8 px-3 rounded-md border border-zinc-200 text-xs font-medium text-zinc-700">
         <Building2 className="size-3.5 text-zinc-400" />
         <span>{companyName}</span>
-        <ChevronDown className="size-3 text-zinc-400" />
-      </button>
+      </div>
 
       {user && (
         <div className="hidden min-w-0 items-center gap-2 border-l border-zinc-200 pl-3 md:flex">
@@ -67,12 +61,6 @@ export function Topbar({ title, subtitle, actions }: TopbarProps) {
           </Badge>
         </div>
       )}
-
-      {/* Notificações */}
-      <button className="relative flex size-8 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 hover:bg-zinc-50 transition-colors">
-        <Bell className="size-4" />
-        <span className="absolute top-1 right-1 size-1.5 rounded-full bg-orange-500" />
-      </button>
 
       <button
         type="button"

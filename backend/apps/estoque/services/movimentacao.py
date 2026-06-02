@@ -189,6 +189,8 @@ def entrada_estoque(
     metadata: dict[str, Any] | None = None,
     request=None,
 ) -> MovimentacaoEstoque:
+    if forma_venda is not None and quantidade_informada is not None:
+        quantidade = forma_venda.converter(quantidade_informada)
     if quantidade <= Decimal("0.000"):
         raise ValidationError({"quantidade": "Quantidade deve ser maior que zero."})
     return _registrar_movimentacao(
@@ -221,6 +223,8 @@ def saida_estoque(
     metadata: dict[str, Any] | None = None,
     request=None,
 ) -> MovimentacaoEstoque:
+    if forma_venda is not None and quantidade_informada is not None:
+        quantidade = forma_venda.converter(quantidade_informada)
     if quantidade <= Decimal("0.000"):
         raise ValidationError({"quantidade": "Quantidade deve ser maior que zero."})
     return _registrar_movimentacao(

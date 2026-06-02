@@ -7,9 +7,11 @@ import { Shell } from "@/components/layout/shell"
 import { Topbar } from "@/components/layout/topbar"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { ErrorState } from "@/components/ui/error-state"
 import { Input } from "@/components/ui/input"
 import { StatCard } from "@/components/ui/stat-card"
 import { FiadoTable } from "@/features/fiado/fiado-table"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { formatCurrency } from "@/lib/utils"
 import { fiadoService } from "@/services/fiado.service"
 
@@ -19,6 +21,7 @@ export default function FiadoPage() {
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
   const [filter, setFilter] = useState<Filter>("todos")
+  const debouncedSearch = useDebouncedValue(search.trim(), 300)
 
   const dashboardQuery = useQuery({
     queryKey: ["fiado", "dashboard"],
@@ -26,13 +29,12 @@ export default function FiadoPage() {
   })
 
   const contasQuery = useQuery({
-    queryKey: ["fiado", "contas", { search, page, filter }],
+    queryKey: ["fiado", "contas", { search: debouncedSearch, page, filter }],
     queryFn: () =>
       fiadoService.list({
         page,
         page_size: 20,
-        search,
-        ordering: "-created_at",
+        search: debouncedSearch,
         ...(filter === "abertas" ? { status: "ABERTA" } : {}),
         ...(filter === "atrasadas" ? { situacao: "atrasada" } : {}),
         ...(filter === "fechadas" ? { status: "FECHADA" } : {}),
@@ -100,7 +102,11 @@ export default function FiadoPage() {
             </div>
           </div>
 
-          <FiadoTable contas={contas} loading={contasQuery.isLoading} />
+          {contasQuery.isError ? (
+            <ErrorState onRetry={() => contasQuery.refetch()} />
+          ) : (
+            <FiadoTable contas={contas} loading={contasQuery.isLoading} />
+          )}
 
           <div className="flex items-center justify-between border-t border-zinc-100 bg-zinc-50/50 px-5 py-3">
             <span className="text-xs text-zinc-500">

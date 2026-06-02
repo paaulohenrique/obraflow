@@ -187,7 +187,9 @@ export function getErrorMessage(error: unknown) {
 
 api.interceptors.request.use(async (config) => {
   const headers = AxiosHeaders.from(config.headers)
-  headers.set("Accept", "application/json")
+  if (!headers.get("Accept")) {
+    headers.set("Accept", "application/json")
+  }
   headers.set("X-Request-ID", createRequestId())
 
   let access = getAccessToken()

@@ -1,7 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { ACCESS_TOKEN_COOKIE, REFRESH_TOKEN_COOKIE, isJwtExpired } from "@/lib/auth-storage"
 
-const protectedRoutes = ["/dashboard", "/clientes", "/estoque", "/fiado", "/financeiro"]
+const protectedRoutes = [
+  "/dashboard",
+  "/clientes",
+  "/estoque",
+  "/fiado",
+  "/financeiro",
+  "/boletos",
+  "/cobrancas",
+  "/fiscal",
+  "/relatorios",
+  "/configuracoes",
+]
 
 function isProtectedPath(pathname: string) {
   return protectedRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`))
@@ -33,5 +44,17 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/login", "/dashboard/:path*", "/clientes/:path*", "/estoque/:path*", "/fiado/:path*", "/financeiro/:path*"],
+  matcher: [
+    "/login",
+    "/dashboard/:path*",
+    "/clientes/:path*",
+    "/estoque/:path*",
+    "/fiado/:path*",
+    "/financeiro/:path*",
+    "/boletos/:path*",
+    "/cobrancas/:path*",
+    "/fiscal/:path*",
+    "/relatorios/:path*",
+    "/configuracoes/:path*",
+  ],
 }

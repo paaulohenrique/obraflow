@@ -8,7 +8,7 @@ from rest_framework.exceptions import ValidationError
 
 from apps.accounts.models import User
 from apps.core.models import AuditLog
-from apps.estoque.models import Produto
+from apps.estoque.models import FormaVendaProduto, Produto
 from apps.estoque.models import MovimentacaoEstoque
 from apps.fiado.models import ContaFiado, HistoricoFiado, ItemFiado, PagamentoFiado
 from apps.fiado.selectors import get_dashboard_fiado
@@ -141,6 +141,45 @@ class TestItemFiadoServices:
         assert conta.valor_total == Decimal("150.00")
         assert conta.valor_restante == Decimal("150.00")
         assert cliente.saldo_devedor == Decimal("150.00")
+
+    def test_adicionar_item_por_saco_precifica_forma_e_baixa_kg(self, admin_user, cliente, produto):
+        produto.estoque_atual = Decimal("500.000")
+        produto.save(update_fields=["estoque_atual"])
+        forma_saco = FormaVendaProduto.objects.create(
+            company=produto.company,
+            produto=produto,
+            nome="Saco 50kg",
+            codigo="SACO",
+            unidade="SACO",
+            fator_conversao=Decimal("50.000000"),
+            preco_venda=Decimal("45.00"),
+            padrao=False,
+        )
+        conta = abrir_conta_fiado(user=admin_user, data={"cliente": cliente})
+
+        item = adicionar_item_fiado(
+            user=admin_user,
+            conta=conta,
+            data={
+                "produto": produto,
+                "forma_venda": forma_saco,
+                "quantidade_informada": Decimal("1.000"),
+                "preco_unitario": Decimal("45.00"),
+            },
+        )
+
+        produto.refresh_from_db()
+        conta.refresh_from_db()
+        cliente.refresh_from_db()
+
+        assert item.quantidade_informada == Decimal("1.000")
+        assert item.quantidade == Decimal("50.000")
+        assert item.preco_unitario == Decimal("45.00")
+        assert item.subtotal == Decimal("45.00")
+        assert item.movimentacao_estoque.quantidade_delta == Decimal("-50.000")
+        assert produto.estoque_atual == Decimal("450.000")
+        assert conta.valor_total == Decimal("45.00")
+        assert cliente.saldo_devedor == Decimal("45.00")
 
     def test_estoque_insuficiente_aborta_sem_item(self, admin_user, cliente, produto):
         conta = abrir_conta_fiado(user=admin_user, data={"cliente": cliente})

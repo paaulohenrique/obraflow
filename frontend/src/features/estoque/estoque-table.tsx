@@ -8,14 +8,15 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table"
 import { formatCurrency } from "@/lib/utils"
 import { formatNumber, toNumber } from "@/lib/format"
-import type { Produto } from "@/types"
+import type { FormaVendaProduto, Produto } from "@/types"
 
 interface EstoqueTableProps {
   produtos: Produto[]
+  formasByProduto?: Record<string, FormaVendaProduto[]>
   loading?: boolean
 }
 
-export function EstoqueTable({ produtos, loading }: EstoqueTableProps) {
+export function EstoqueTable({ produtos, formasByProduto = {}, loading }: EstoqueTableProps) {
   if (loading) {
     return (
       <div className="space-y-2 p-5">
@@ -64,11 +65,29 @@ export function EstoqueTable({ produtos, loading }: EstoqueTableProps) {
           return (
             <Tr key={produto.id} clickable>
               <Td className="font-mono text-xs text-zinc-400">{produto.sku || produto.codigo_barras || "-"}</Td>
-              <Td>
+              <Td className="min-w-[280px] whitespace-normal">
                 <div className="flex items-center gap-2">
                   {baixo && <AlertTriangle className="size-3.5 flex-shrink-0 text-yellow-500" />}
                   <span className="font-medium text-zinc-900">{produto.nome}</span>
                 </div>
+                {formasByProduto[produto.id]?.length ? (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {formasByProduto[produto.id].slice(0, 4).map((forma) => (
+                      <span
+                        key={forma.id}
+                        title={`1 ${forma.unidade} = ${formatNumber(forma.fator_conversao, 3)} ${produto.unidade_sigla}`}
+                        className="rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] font-medium text-zinc-600"
+                      >
+                        {forma.nome}
+                      </span>
+                    ))}
+                    {formasByProduto[produto.id].length > 4 && (
+                      <span className="rounded-full border border-zinc-200 bg-white px-2 py-0.5 text-[11px] text-zinc-400">
+                        +{formasByProduto[produto.id].length - 4}
+                      </span>
+                    )}
+                  </div>
+                ) : null}
               </Td>
               <Td>
                 <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600">

@@ -1,12 +1,14 @@
 "use client"
 
 import * as Dialog from "@radix-ui/react-dialog"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   AlertTriangle,
+  CalendarClock,
   CreditCard,
   Edit3,
   ExternalLink,
+  FileDown,
   HandCoins,
   List,
   Phone,
@@ -15,9 +17,10 @@ import {
 import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useApiToast } from "@/hooks/use-api-toast"
 import { fiadoService } from "@/services/fiado.service"
-import { cn, formatCurrency, formatDocument, formatPhone, initials } from "@/lib/utils"
+import { cn, formatCurrency, formatDate, formatDocument, formatPhone, initials } from "@/lib/utils"
 import { toNumber } from "@/lib/format"
 import type { Cliente } from "@/types"
 
@@ -43,10 +46,31 @@ export function ClienteActionDrawer({ cliente, onClose, onEdit }: ClienteActionD
     onError: (error) => toast.error(error),
   })
 
+  const baixarPdfMutation = useMutation({
+    mutationFn: (contaId: string) => fiadoService.baixarPdfContaFiado(contaId),
+    onError: (error) => toast.error(error),
+  })
+
   const open = Boolean(cliente)
+  const clienteId = cliente?.id
+
+  const contaAbertaQuery = useQuery({
+    queryKey: ["fiado", "cliente", clienteId, "aberta"],
+    queryFn: () => fiadoService.getContaAbertaByCliente(clienteId!),
+    enabled: open && Boolean(clienteId),
+  })
+
+  const historicoFiadoQuery = useQuery({
+    queryKey: ["fiado", "cliente", clienteId, "fechadas"],
+    queryFn: () => fiadoService.getHistoricoFiadoCliente(clienteId!, { page_size: 10 }),
+    enabled: open && Boolean(clienteId),
+  })
 
   if (!cliente) return null
 
+  const contaAberta = contaAbertaQuery.data
+  const contasFechadas = historicoFiadoQuery.data?.results ?? []
+  const ultimaMovimentacao = contaAberta?.updated_at ?? contasFechadas[0]?.updated_at ?? cliente.updated_at
   const saldo = toNumber(cliente.saldo_devedor)
   const limite = toNumber(cliente.limite_credito)
   const creditoDisponivel = toNumber(cliente.credito_disponivel)
@@ -178,6 +202,132 @@ export function ClienteActionDrawer({ cliente, onClose, onEdit }: ClienteActionD
                 <p className="text-xs text-yellow-800">{fiadoTooltip}</p>
               </div>
             )}
+
+            {/* Conta atual */}
+            <div className="border-b border-zinc-100 px-5 py-4">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                Conta atual
+              </p>
+              {contaAbertaQuery.isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              ) : contaAberta ? (
+                <div className="space-y-3 rounded-md border border-orange-200 bg-orange-50 px-3 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <Badge variant="warning">ABERTA</Badge>
+                      <p className="mt-2 text-xs font-semibold text-zinc-900">Fiado #{contaAberta.id.slice(0, 8)}</p>
+                      <p className="mt-0.5 text-[11px] text-zinc-500">Aberta em {formatDate(contaAberta.data_abertura)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-zinc-500">Restante</p>
+                      <p className="text-sm font-bold tabular-nums text-red-600">{formatCurrency(contaAberta.valor_restante)}</p>
+                      <p className="mt-1 text-[11px] text-zinc-500">Total {formatCurrency(contaAberta.valor_total)}</p>
+                    </div>
+                  </div>
+                  <Button
+                    className="w-full"
+                    size="sm"
+                    icon={<ExternalLink className="size-3.5" />}
+                    onClick={() => {
+                      onClose()
+                      router.push(`/fiado/${contaAberta.id}`)
+                    }}
+                  >
+                    Ir para conta
+                  </Button>
+                </div>
+              ) : (
+                <div className="rounded-md border border-dashed border-zinc-200 px-3 py-3">
+                  <p className="text-xs font-medium text-zinc-700">Nenhuma conta aberta.</p>
+                  <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">
+                    Contas fechadas ficam salvas no histórico. Você pode abrir uma nova conta fiado para este cliente.
+                  </p>
+                  <Button
+                    className="mt-3 w-full"
+                    size="sm"
+                    icon={<HandCoins className="size-3.5" />}
+                    loading={abrirFiadoMutation.isPending}
+                    disabled={fiadoBloqueado || abrirFiadoMutation.isPending}
+                    onClick={() => abrirFiadoMutation.mutate()}
+                  >
+                    Abrir nova conta fiado
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Histórico */}
+            <div className="border-b border-zinc-100 px-5 py-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                  Histórico de fiados
+                </p>
+                <div className="flex items-center gap-1 text-[10px] text-zinc-400">
+                  <CalendarClock className="size-3.5" />
+                  {formatDate(ultimaMovimentacao)}
+                </div>
+              </div>
+
+              {historicoFiadoQuery.isLoading ? (
+                <div className="space-y-2">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <Skeleton key={index} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : contasFechadas.length === 0 ? (
+                <div className="rounded-md border border-dashed border-zinc-200 px-3 py-3 text-xs text-zinc-400">
+                  Nenhuma conta fechada para este cliente.
+                </div>
+              ) : (
+                <div className="divide-y divide-zinc-100 rounded-md border border-zinc-100">
+                  {contasFechadas.map((conta) => (
+                    <div key={conta.id} className="px-3 py-2.5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold text-zinc-800">
+                            Fiado #{conta.id.slice(0, 8)}
+                          </p>
+                          <p className="mt-0.5 text-[11px] text-zinc-400">
+                            {formatDate(conta.data_fechamento ?? conta.data_abertura)}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-bold tabular-nums text-zinc-900">
+                            {formatCurrency(conta.valor_total)}
+                          </p>
+                          <Badge variant="success" className="mt-1">FECHADA</Badge>
+                        </div>
+                      </div>
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          icon={<ExternalLink className="size-3.5" />}
+                          onClick={() => {
+                            onClose()
+                            router.push(`/fiado/${conta.id}`)
+                          }}
+                        >
+                          Ver
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          icon={<FileDown className="size-3.5" />}
+                          loading={baixarPdfMutation.isPending}
+                          onClick={() => baixarPdfMutation.mutate(conta.id)}
+                        >
+                          PDF
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Ações fixas no rodapé */}
@@ -191,7 +341,7 @@ export function ClienteActionDrawer({ cliente, onClose, onEdit }: ClienteActionD
               disabled={fiadoBloqueado || abrirFiadoMutation.isPending}
               onClick={() => abrirFiadoMutation.mutate()}
             >
-              Abrir Fiado
+              {contaAberta ? "Ir para fiado aberto" : "Abrir nova conta"}
             </Button>
 
             <div className="grid grid-cols-3 gap-2">

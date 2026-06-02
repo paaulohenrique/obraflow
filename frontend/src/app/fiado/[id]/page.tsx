@@ -2,9 +2,9 @@
 
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, Banknote, CheckCircle2, CreditCard, History, Package, Plus, User, XCircle } from "lucide-react"
-import { useState } from "react"
+import { useMutation, useQuery } from "@tanstack/react-query"
+import { ArrowLeft, Banknote, CheckCircle2, CreditCard, FileDown, History, Package, Plus, Printer, User, XCircle } from "lucide-react"
+import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -16,6 +16,7 @@ import { Topbar } from "@/components/layout/topbar"
 import { cn, formatCurrency, formatDate, formatDatetime, formatDocument, initials } from "@/lib/utils"
 import { formatNumber, toNumber } from "@/lib/format"
 import { fiadoService } from "@/services/fiado.service"
+import { useApiToast } from "@/hooks/use-api-toast"
 
 type Tab = "itens" | "pagamentos" | "historico"
 
@@ -29,9 +30,16 @@ function contaStatus(status?: string, atrasada?: boolean, parcial?: boolean) {
 
 export default function FiadoDetalhePage() {
   const { id } = useParams<{ id: string }>()
+  const toast = useApiToast()
   const [tab, setTab] = useState<Tab>("itens")
   const [itemDialogOpen, setItemDialogOpen] = useState(false)
   const [pagamentoDialogOpen, setPagamentoDialogOpen] = useState(false)
+
+  useEffect(() => {
+    const openProductSearch = () => setItemDialogOpen(true)
+    window.addEventListener("obraflow:open-product-search", openProductSearch)
+    return () => window.removeEventListener("obraflow:open-product-search", openProductSearch)
+  }, [])
 
   const contaQuery = useQuery({
     queryKey: ["fiado", "contas", id],
@@ -54,6 +62,11 @@ export default function FiadoDetalhePage() {
     queryKey: ["fiado", "contas", id, "historico"],
     queryFn: () => fiadoService.historico(id, { page_size: 100 }),
     enabled: Boolean(contaQuery.data),
+  })
+
+  const baixarPdfMutation = useMutation({
+    mutationFn: () => fiadoService.baixarPdfContaFiado(id),
+    onError: (error) => toast.error(error),
   })
 
   const conta = contaQuery.data
@@ -95,6 +108,7 @@ export default function FiadoDetalhePage() {
   const pago = toNumber(conta.valor_pago)
   const pctPago = total > 0 ? Math.round((pago / total) * 100) : 0
   const contaAberta = conta.status === "ABERTA"
+  const contaFechada = conta.status === "FECHADA"
 
   return (
     <Shell>
@@ -123,6 +137,28 @@ export default function FiadoDetalhePage() {
             >
               Item
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<FileDown className="size-3.5" />}
+              loading={baixarPdfMutation.isPending}
+              onClick={() => baixarPdfMutation.mutate()}
+            >
+              PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<Printer className="size-3.5" />}
+              onClick={() => window.print()}
+            >
+              Imprimir
+            </Button>
+            <Link href={`/clientes/${conta.cliente}`}>
+              <Button variant="ghost" size="sm" icon={<User className="size-3.5" />}>
+                Cliente
+              </Button>
+            </Link>
             <Link href="/fiado">
               <Button variant="ghost" size="sm" icon={<ArrowLeft className="size-3.5" />}>
                 Voltar
@@ -133,6 +169,20 @@ export default function FiadoDetalhePage() {
       />
 
       <main className="flex-1 space-y-5 p-6">
+        {contaFechada && (
+          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="success">Conta finalizada</Badge>
+              <p className="text-sm font-medium text-green-900">
+                Esta conta já foi quitada e está disponível apenas para consulta.
+              </p>
+            </div>
+            <p className="mt-1 text-xs text-green-700">
+              Itens, pagamentos e histórico permanecem salvos. Você pode baixar o PDF, imprimir ou abrir uma nova conta pelo cliente.
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
           <Card>
             <CardContent className="space-y-3 py-5">

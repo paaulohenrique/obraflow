@@ -8,6 +8,11 @@ export const clientesService = {
     return response.data
   },
 
+  async inadimplentes(params?: PaginationParams) {
+    const response = await api.get<PaginatedResponse<Cliente>>(`/clientes/inadimplentes/${toQueryString(params)}`)
+    return response.data
+  },
+
   async get(id: string) {
     const response = await api.get<Cliente>(`/clientes/${id}/`)
     return response.data

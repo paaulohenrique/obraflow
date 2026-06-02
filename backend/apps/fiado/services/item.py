@@ -11,7 +11,15 @@ from apps.core.services import create_audit_log
 from apps.estoque.models import Produto
 from apps.estoque.services import cancelar_movimentacao, saida_estoque
 
-from ..models import ContaFiado, HistoricoFiado, ItemFiado, ZERO_MONEY, item_subtotal, money
+from ..models import (
+    ContaFiado,
+    HistoricoFiado,
+    ItemFiado,
+    ZERO_MONEY,
+    item_quantidade_precificada,
+    item_subtotal,
+    money,
+)
 from .conta import (
     _ensure_same_company,
     _full_clean_or_400,
@@ -119,7 +127,12 @@ def adicionar_item_fiado(
         if data.get("preco_unitario") is not None
         else (forma_venda.preco_venda if forma_venda else produto.preco_venda)
     )
-    subtotal = item_subtotal(quantidade=quantidade, preco_unitario=preco_unitario)
+    quantidade_precificada = item_quantidade_precificada(
+        quantidade=quantidade,
+        quantidade_informada=quantidade_informada,
+        tem_forma_venda=forma_venda is not None,
+    )
+    subtotal = item_subtotal(quantidade=quantidade_precificada, preco_unitario=preco_unitario)
 
     if subtotal > ZERO_MONEY and cliente.limite_credito <= ZERO_MONEY:
         raise ValidationError({"limite_credito": "Cliente não possui limite de crédito."})

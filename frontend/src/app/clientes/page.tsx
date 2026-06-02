@@ -7,10 +7,12 @@ import { Shell } from "@/components/layout/shell"
 import { Topbar } from "@/components/layout/topbar"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { ErrorState } from "@/components/ui/error-state"
 import { Input } from "@/components/ui/input"
 import { ClienteActionDrawer } from "@/features/clientes/cliente-action-drawer"
 import { ClienteFormDialog } from "@/features/clientes/cliente-form-dialog"
 import { ClientesTable } from "@/features/clientes/clientes-table"
+import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { clientesService } from "@/services/clientes.service"
 import type { Cliente } from "@/types"
 
@@ -23,14 +25,15 @@ export default function ClientesPage() {
   const [open, setOpen] = useState(false)
   const [drawerCliente, setDrawerCliente] = useState<Cliente | null>(null)
   const [editCliente, setEditCliente] = useState<Cliente | null>(null)
+  const debouncedSearch = useDebouncedValue(search.trim(), 300)
 
   const clientesQuery = useQuery({
-    queryKey: ["clientes", { search, page, filter }],
+    queryKey: ["clientes", { search: debouncedSearch, page, filter }],
     queryFn: () =>
       clientesService.list({
         page,
         page_size: 20,
-        search,
+        search: debouncedSearch,
         ordering: "nome",
         ...(filter === "devedores" ? { saldo_devedor__gt: 0 } : {}),
         ...(filter === "bloqueados" ? { bloqueado: true } : {}),
@@ -114,11 +117,15 @@ export default function ClientesPage() {
             </div>
           </div>
 
-          <ClientesTable
-            clientes={clientes}
-            loading={clientesQuery.isLoading}
-            onClienteClick={setDrawerCliente}
-          />
+          {clientesQuery.isError ? (
+            <ErrorState onRetry={() => clientesQuery.refetch()} />
+          ) : (
+            <ClientesTable
+              clientes={clientes}
+              loading={clientesQuery.isLoading}
+              onClienteClick={setDrawerCliente}
+            />
+          )}
 
           <div className="flex items-center justify-between border-t border-zinc-100 bg-zinc-50/50 px-5 py-3">
             <span className="text-xs text-zinc-500">

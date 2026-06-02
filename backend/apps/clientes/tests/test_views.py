@@ -80,6 +80,29 @@ class TestClienteList:
         names = [c["nome"] for c in r.data["results"]]
         assert names == sorted(names, reverse=True)
 
+    def test_default_ordering_alfabetico(self, admin_client, empresa_a):
+        for index, nome in enumerate(["Pedro", "Ana", "Maria", "Bruno", "Carlos"], start=1):
+            make_cliente(empresa=empresa_a, nome=nome, cpf_cnpj=f"1000000000{index}")
+
+        r = admin_client.get(LIST_URL)
+        names = [c["nome"] for c in r.data["results"]]
+
+        assert names == ["Ana", "Bruno", "Carlos", "Maria", "Pedro"]
+
+    def test_search_mantem_ordem_alfabetica(self, admin_client, empresa_a):
+        for index, nome in enumerate(["José", "Maria", "João", "Joaquim"], start=1):
+            make_cliente(
+                empresa=empresa_a,
+                nome=nome,
+                cpf_cnpj=f"2000000000{index}",
+                email=f"cliente{index}@test.com",
+            )
+
+        r = admin_client.get(LIST_URL + "?search=jo")
+        names = [c["nome"] for c in r.data["results"]]
+
+        assert names == ["Joaquim", "José", "João"]
+
     def test_page_size(self, admin_client, cliente, cliente_bloqueado, cliente_inadimplente):
         r = admin_client.get(LIST_URL + "?page_size=1")
         assert len(r.data["results"]) == 1

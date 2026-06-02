@@ -203,6 +203,18 @@ class TestQACimento:
         prod.refresh_from_db()
         assert prod.estoque_atual == Decimal("425.000")
 
+    def test_venda_1_saco_com_500kg_resulta_450kg(self, admin_user, empresa_a, categoria, unidade):
+        prod, f_kg, f_saco = self._setup(empresa_a, admin_user, categoria, unidade)
+        set_estoque(prod, Decimal("500.000"))
+
+        saida_estoque(
+            user=admin_user, produto=prod,
+            quantidade=Decimal("1.000"),
+            forma_venda=f_saco, quantidade_informada=Decimal("1.000"),
+        )
+        prod.refresh_from_db()
+        assert prod.estoque_atual == Decimal("450.000")
+
     def test_fluxo_completo_cimento(self, admin_user, empresa_a, categoria, unidade):
         prod, f_kg, f_saco = self._setup(empresa_a, admin_user, categoria, unidade)
 
@@ -280,6 +292,19 @@ class TestQABloco:
                       forma_venda=f_un, quantidade_informada=Decimal("300"))
         prod.refresh_from_db()
         assert prod.estoque_atual == Decimal("1700.000")
+
+    def test_venda_1_milheiro_resulta_1000_unidades(self, admin_user, empresa_a,
+                                                    categoria, unidade):
+        prod, f_un, f_mil = self._setup(empresa_a, admin_user, categoria, unidade)
+        set_estoque(prod, Decimal("2000.000"))
+
+        saida_estoque(
+            user=admin_user, produto=prod,
+            quantidade=Decimal("1.000"),
+            forma_venda=f_mil, quantidade_informada=Decimal("1.000"),
+        )
+        prod.refresh_from_db()
+        assert prod.estoque_atual == Decimal("1000.000")
 
 
 # ──────────────────────────────────────────────

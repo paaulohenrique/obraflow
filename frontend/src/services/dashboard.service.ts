@@ -31,12 +31,13 @@ function buildFluxoCaixa(items: DashboardResumo["financeiro"]["fluxo_diario"]): 
 
 export const dashboardService = {
   async resumo(): Promise<DashboardResumo> {
-    const [financeiro, fiado, clientes, clientesDevedores, produtosCriticos, contasAtrasadas] =
+    const [financeiro, fiado, clientes, clientesDevedores, clientesInadimplentes, produtosCriticos, contasAtrasadas] =
       await Promise.all([
         financeiroService.dashboard(),
         fiadoService.dashboard(),
         clientesService.list({ page_size: 1 }),
         clientesService.list({ saldo_devedor__gt: 0, ordering: "-saldo_devedor", page_size: 5 }),
+        clientesService.inadimplentes({ page_size: 1 }),
         estoqueService.lowStock({ page_size: 5 }),
         financeiroService.contasPagar({ situacao: "atrasada", page_size: 5 }),
       ])
@@ -46,6 +47,7 @@ export const dashboardService = {
       fiado,
       clientes,
       clientesDevedores,
+      clientesInadimplentes,
       produtosCriticos,
       contasAtrasadas,
       fluxoCaixa: buildFluxoCaixa(financeiro.fluxo_diario),

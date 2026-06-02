@@ -133,6 +133,16 @@ export interface Produto {
   updated_at: string
 }
 
+export interface CategoriaProduto {
+  id: string
+  company_id: string
+  nome: string
+  descricao?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface FormaVendaProduto {
   id: string
   company_id: string
@@ -356,6 +366,7 @@ export interface DashboardResumo {
   fiado: DashboardFiado
   clientes: PaginatedResponse<Cliente>
   clientesDevedores: PaginatedResponse<Cliente>
+  clientesInadimplentes: PaginatedResponse<Cliente>
   produtosCriticos: PaginatedResponse<Produto>
   contasAtrasadas: PaginatedResponse<ContaPagar>
   fluxoCaixa: FluxoCaixaItem[]

@@ -1,4 +1,5 @@
 import type {
+  CategoriaProduto,
   FormaVendaProduto,
   MovimentacaoEstoque,
   PaginatedResponse,
@@ -9,6 +10,13 @@ import { api } from "./api"
 import { toQueryString } from "./query-params"
 
 export const estoqueService = {
+  async categorias(params?: PaginationParams) {
+    const response = await api.get<PaginatedResponse<CategoriaProduto>>(
+      `/estoque/categorias/${toQueryString(params)}`
+    )
+    return response.data
+  },
+
   async list(params?: PaginationParams) {
     const response = await api.get<PaginatedResponse<Produto>>(`/estoque/produtos/${toQueryString(params)}`)
     return response.data
