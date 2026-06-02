@@ -1,10 +1,10 @@
 x-backend-common: &backend-common
   build:
-    context: ./backend
+    context: .
     target: dev
-  env_file: ./backend/.env
+  env_file: .env
   volumes:
-    - ./backend:/app
+    - .:/app
     - backend_logs:/app/logs
     - backend_media:/app/media
   depends_on:
@@ -56,7 +56,7 @@ services:
       POSTGRES_PASSWORD: obraflow
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "5433:5432"
     healthcheck:

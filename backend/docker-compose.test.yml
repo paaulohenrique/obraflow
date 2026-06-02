@@ -29,7 +29,7 @@ services:
 
   test:
     build:
-      context: ./backend
+      context: .
       target: dev
     command: >
       sh -c "python manage.py migrate --noinput &&
@@ -49,4 +49,4 @@ services:
       redis_test:
         condition: service_healthy
     volumes:
-      - ./backend:/app
+      - .:/app

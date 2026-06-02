@@ -525,9 +525,95 @@ export interface CategoriaFinanceira {
   company_id: string
   nome: string
   tipo: "RECEITA" | "DESPESA"
+  descricao?: string
+  ativa: boolean
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export type TipoContaFinanceira = "CAIXA" | "BANCO" | "CARTEIRA" | "OUTRO"
+
+export interface ContaFinanceira {
+  id: string
+  company_id: string
+  nome: string
+  tipo: TipoContaFinanceira
+  saldo_atual: ApiDecimal
+  ativo: boolean
+  observacao?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type TipoLancamento = "ENTRADA" | "SAIDA"
+export type StatusLancamento = "CONFIRMADO" | "CANCELADO"
+export type FormaPagamento = "DINHEIRO" | "PIX" | "CARTAO" | "BOLETO" | "TRANSFERENCIA" | "OUTRO"
+export type OrigemLancamento = "MANUAL" | "FIADO" | "CONTA_PAGAR" | "ESTORNO" | "AJUSTE"
+
+export interface LancamentoFinanceiro {
+  id: string
+  company_id: string
+  conta_financeira: string
+  conta_financeira_nome: string
+  categoria: string
+  categoria_nome: string
+  caixa_diario: string | null
+  tipo: TipoLancamento
+  valor: ApiDecimal
+  data_lancamento: string
+  descricao: string
+  origem_tipo: OrigemLancamento
+  origem_id: string | null
+  forma_pagamento: FormaPagamento
+  status: StatusLancamento
+  created_by: string | null
+  created_by_nome: string | null
+  estorno_de: string | null
+  idempotency_key: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface PagarContaPagarPayload {
+  conta_financeira: string
+  valor: ApiDecimal
+  forma_pagamento: FormaPagamento
+  data_pagamento?: string
+  descricao?: string
+  idempotency_key?: string
+}
+
+export interface CriarContaPagarPayload {
+  descricao: string
+  categoria: string
+  valor_total: ApiDecimal
+  data_vencimento: string
+  data_emissao?: string
+  fornecedor?: string | null
+  observacao?: string
+}
+
+export interface CriarLancamentoPayload {
+  conta_financeira: string
+  categoria: string
+  tipo: TipoLancamento
+  valor: ApiDecimal
+  forma_pagamento?: FormaPagamento
+  data_lancamento?: string
+  descricao?: string
+  idempotency_key?: string
+}
+
+export interface CancelarContaPagarPayload {
+  motivo: string
+}
+
+export interface CancelarLancamentoPayload {
+  motivo: string
+  idempotency_key?: string
 }
 
 export interface BoletoOCR {
