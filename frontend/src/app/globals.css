@@ -1,0 +1,132 @@
+@import "tailwindcss";
+
+/* ─── MP Construções — Design System ────────────────────────────────────── */
+
+@theme {
+  /* Brand: Laranja MP */
+  --color-orange-50:  #fff7ed;
+  --color-orange-100: #ffedd5;
+  --color-orange-200: #fed7aa;
+  --color-orange-300: #fdba74;
+  --color-orange-400: #fb923c;
+  --color-orange-500: #f97316;
+  --color-orange-600: #ea6c0a;
+  --color-orange-700: #c2590a;
+  --color-orange-800: #9a3a12;
+  --color-orange-900: #7c2d12;
+
+  /* Neutrals */
+  --color-zinc-50:  #fafafa;
+  --color-zinc-100: #f4f4f5;
+  --color-zinc-200: #e4e4e7;
+  --color-zinc-300: #d4d4d8;
+  --color-zinc-400: #a1a1aa;
+  --color-zinc-500: #71717a;
+  --color-zinc-600: #52525b;
+  --color-zinc-700: #3f3f46;
+  --color-zinc-800: #27272a;
+  --color-zinc-900: #18181b;
+  --color-zinc-950: #09090b;
+
+  /* Semantic */
+  --color-green-500: #22c55e;
+  --color-green-600: #16a34a;
+  --color-red-500:   #ef4444;
+  --color-red-600:   #dc2626;
+  --color-yellow-500: #eab308;
+  --color-yellow-600: #ca8a04;
+  --color-blue-500:  #3b82f6;
+  --color-blue-600:  #2563eb;
+
+  /* Typography */
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+
+  /* Border radius */
+  --radius-sm:  4px;
+  --radius-md:  6px;
+  --radius-lg:  8px;
+  --radius-xl:  12px;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* ─── CSS Variables (app-level tokens) ──────────────────────────────────── */
+:root {
+  /* Surface */
+  --bg-base:      #f9fafb;
+  --bg-surface:   #ffffff;
+  --bg-muted:     #f4f4f5;
+
+  /* Sidebar */
+  --sidebar-bg:        #18181b;
+  --sidebar-border:    #27272a;
+  --sidebar-text:      #a1a1aa;
+  --sidebar-text-hover:#e4e4e7;
+  --sidebar-active:    #f97316;
+  --sidebar-active-bg: rgba(249, 115, 22, 0.12);
+
+  /* Primary */
+  --primary:          #f97316;
+  --primary-hover:    #ea6c0a;
+  --primary-light:    #fff7ed;
+
+  /* Text */
+  --text-primary:   #18181b;
+  --text-secondary: #52525b;
+  --text-muted:     #a1a1aa;
+
+  /* Border */
+  --border:         #e4e4e7;
+  --border-strong:  #d4d4d8;
+
+  /* Status */
+  --success:    #16a34a;
+  --success-bg: #f0fdf4;
+  --error:      #dc2626;
+  --error-bg:   #fef2f2;
+  --warning:    #ca8a04;
+  --warning-bg: #fefce8;
+  --info:       #2563eb;
+  --info-bg:    #eff6ff;
+}
+
+/* ─── Base ───────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ─── Focus ring (acessibilidade) ──────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ─── Utilities ─────────────────────────────────────────────────────────── */
+.text-balance { text-wrap: balance; }
+.tabular-nums { font-variant-numeric: tabular-nums; }
