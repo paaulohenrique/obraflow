@@ -1,4 +1,5 @@
 from rest_framework.permissions import BasePermission
+from rest_framework.permissions import SAFE_METHODS
 
 
 class EmpresaPermission(BasePermission):
@@ -11,6 +12,10 @@ class EmpresaPermission(BasePermission):
         if not request.user or not request.user.is_authenticated:
             return False
         action = getattr(view, "action", None)
+        if action == "fiscal":
+            if request.method in SAFE_METHODS:
+                return request.user.role in ("admin", "manager", "seller", "viewer")
+            return request.user.role in ("admin", "manager")
         if action in ("list", "retrieve"):
             return request.user.role in ("admin", "manager", "seller", "viewer")
         return request.user.is_staff or request.user.is_superuser

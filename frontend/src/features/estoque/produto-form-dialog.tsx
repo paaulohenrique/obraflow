@@ -29,6 +29,18 @@ interface ProdutoFormState {
   preco_venda: string
   fornecedor_principal: string
   descricao: string
+  ncm: string
+  cfop_padrao: string
+  cst_csosn: string
+  cest: string
+  origem_mercadoria: string
+  unidade_tributavel: string
+  ean_tributavel: string
+  codigo_beneficio_fiscal: string
+  aliquota_icms: string
+  aliquota_ipi: string
+  aliquota_pis: string
+  aliquota_cofins: string
 }
 
 const emptyForm: ProdutoFormState = {
@@ -42,6 +54,18 @@ const emptyForm: ProdutoFormState = {
   preco_venda: "0",
   fornecedor_principal: "",
   descricao: "",
+  ncm: "",
+  cfop_padrao: "",
+  cst_csosn: "",
+  cest: "",
+  origem_mercadoria: "0",
+  unidade_tributavel: "",
+  ean_tributavel: "SEM GTIN",
+  codigo_beneficio_fiscal: "",
+  aliquota_icms: "0",
+  aliquota_ipi: "0",
+  aliquota_pis: "0",
+  aliquota_cofins: "0",
 }
 
 function formFromProduto(produto?: Produto | null): ProdutoFormState {
@@ -57,6 +81,18 @@ function formFromProduto(produto?: Produto | null): ProdutoFormState {
     preco_venda: String(produto.preco_venda ?? "0"),
     fornecedor_principal: produto.fornecedor_principal ?? "",
     descricao: produto.descricao ?? "",
+    ncm: produto.ncm ?? "",
+    cfop_padrao: produto.cfop_padrao ?? "",
+    cst_csosn: produto.cst_csosn ?? "",
+    cest: produto.cest ?? "",
+    origem_mercadoria: produto.origem_mercadoria ?? "0",
+    unidade_tributavel: produto.unidade_tributavel ?? "",
+    ean_tributavel: produto.ean_tributavel ?? "SEM GTIN",
+    codigo_beneficio_fiscal: produto.codigo_beneficio_fiscal ?? "",
+    aliquota_icms: String(produto.aliquota_icms ?? "0"),
+    aliquota_ipi: String(produto.aliquota_ipi ?? "0"),
+    aliquota_pis: String(produto.aliquota_pis ?? "0"),
+    aliquota_cofins: String(produto.aliquota_cofins ?? "0"),
   }
 }
 
@@ -114,6 +150,12 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
     if (Number(normalizeDecimal(form.estoque_minimo)) < 0) errors.estoque_minimo = "Valor inválido."
     if (Number(normalizeDecimal(form.preco_compra)) < 0) errors.preco_compra = "Valor inválido."
     if (Number(normalizeDecimal(form.preco_venda)) < 0) errors.preco_venda = "Valor inválido."
+    if (form.ncm && !/^\d{8}$/.test(form.ncm.replace(/\D/g, ""))) errors.ncm = "NCM deve ter 8 dígitos."
+    if (form.cfop_padrao && !/^\d{4}$/.test(form.cfop_padrao.replace(/\D/g, ""))) errors.cfop_padrao = "CFOP deve ter 4 dígitos."
+    if (form.cest && !/^\d{7}$/.test(form.cest.replace(/\D/g, ""))) errors.cest = "CEST deve ter 7 dígitos."
+    for (const field of ["aliquota_icms", "aliquota_ipi", "aliquota_pis", "aliquota_cofins"] as const) {
+      if (Number(normalizeDecimal(form[field])) < 0) errors[field] = "Alíquota inválida."
+    }
     return errors
   }, [form])
 
@@ -133,6 +175,18 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
         preco_venda: normalizeDecimal(form.preco_venda),
         custo_medio: produto?.custo_medio ?? normalizeDecimal(form.preco_compra),
         estoque_minimo: normalizeDecimal(form.estoque_minimo),
+        ncm: form.ncm.trim(),
+        cfop_padrao: form.cfop_padrao.trim(),
+        cst_csosn: form.cst_csosn.trim(),
+        cest: form.cest.trim(),
+        origem_mercadoria: form.origem_mercadoria,
+        unidade_tributavel: form.unidade_tributavel.trim().toUpperCase(),
+        ean_tributavel: form.ean_tributavel.trim() || "SEM GTIN",
+        codigo_beneficio_fiscal: form.codigo_beneficio_fiscal.trim(),
+        aliquota_icms: normalizeDecimal(form.aliquota_icms),
+        aliquota_ipi: normalizeDecimal(form.aliquota_ipi),
+        aliquota_pis: normalizeDecimal(form.aliquota_pis),
+        aliquota_cofins: normalizeDecimal(form.aliquota_cofins),
       }
       return isEditing ? produtosService.update(produto!.id, payload) : produtosService.create(payload)
     },
@@ -290,6 +344,103 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                   disabled={mutation.isPending}
                 />
               </Field>
+
+              <div className="space-y-4 rounded-md border border-yellow-200 bg-yellow-50/50 p-3 md:col-span-2">
+                <div>
+                  <p className="text-xs font-bold text-zinc-800">Dados fiscais</p>
+                  <p className="text-[11px] text-zinc-600">
+                    Estes dados serão usados futuramente para emissão de NF-e. Confirme as regras fiscais com seu contador.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                  <Field label="NCM" error={showError("ncm")}>
+                    <Input
+                      value={form.ncm}
+                      maxLength={8}
+                      error={Boolean(showError("ncm"))}
+                      onChange={(event) => updateField("ncm", event.target.value.replace(/\D/g, ""))}
+                      disabled={mutation.isPending}
+                    />
+                  </Field>
+                  <Field label="CFOP padrão" error={showError("cfop_padrao")}>
+                    <Input
+                      value={form.cfop_padrao}
+                      maxLength={4}
+                      error={Boolean(showError("cfop_padrao"))}
+                      onChange={(event) => updateField("cfop_padrao", event.target.value.replace(/\D/g, ""))}
+                      disabled={mutation.isPending}
+                    />
+                  </Field>
+                  <Field label="CST/CSOSN">
+                    <Input
+                      value={form.cst_csosn}
+                      maxLength={4}
+                      onChange={(event) => updateField("cst_csosn", event.target.value.toUpperCase())}
+                      disabled={mutation.isPending}
+                    />
+                  </Field>
+                  <Field label="CEST" error={showError("cest")}>
+                    <Input
+                      value={form.cest}
+                      maxLength={7}
+                      error={Boolean(showError("cest"))}
+                      onChange={(event) => updateField("cest", event.target.value.replace(/\D/g, ""))}
+                      disabled={mutation.isPending}
+                    />
+                  </Field>
+                  <Field label="Origem" >
+                    <select
+                      value={form.origem_mercadoria}
+                      onChange={(event) => updateField("origem_mercadoria", event.target.value)}
+                      disabled={mutation.isPending}
+                      className="h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 disabled:bg-zinc-50 disabled:opacity-50"
+                    >
+                      <option value="0">0 - Nacional</option>
+                      <option value="1">1 - Estrangeira direta</option>
+                      <option value="2">2 - Estrangeira mercado interno</option>
+                      <option value="3">3 - Nacional importação &gt; 40%</option>
+                      <option value="4">4 - Nacional PPB</option>
+                      <option value="5">5 - Nacional importação &lt;= 40%</option>
+                      <option value="6">6 - Estrangeira direta sem similar</option>
+                      <option value="7">7 - Estrangeira mercado interno sem similar</option>
+                      <option value="8">8 - Nacional importação &gt; 70%</option>
+                    </select>
+                  </Field>
+                  <Field label="Unidade tributável">
+                    <Input
+                      value={form.unidade_tributavel}
+                      onChange={(event) => updateField("unidade_tributavel", event.target.value.toUpperCase())}
+                      disabled={mutation.isPending}
+                    />
+                  </Field>
+                  <Field label="EAN tributável">
+                    <Input
+                      value={form.ean_tributavel}
+                      onChange={(event) => updateField("ean_tributavel", event.target.value)}
+                      disabled={mutation.isPending}
+                    />
+                  </Field>
+                  <Field label="Benefício fiscal">
+                    <Input
+                      value={form.codigo_beneficio_fiscal}
+                      onChange={(event) => updateField("codigo_beneficio_fiscal", event.target.value.toUpperCase())}
+                      disabled={mutation.isPending}
+                    />
+                  </Field>
+                  <Field label="ICMS %" error={showError("aliquota_icms")}>
+                    <Input type="number" min="0" step="0.0001" value={form.aliquota_icms} onChange={(event) => updateField("aliquota_icms", event.target.value)} disabled={mutation.isPending} />
+                  </Field>
+                  <Field label="IPI %" error={showError("aliquota_ipi")}>
+                    <Input type="number" min="0" step="0.0001" value={form.aliquota_ipi} onChange={(event) => updateField("aliquota_ipi", event.target.value)} disabled={mutation.isPending} />
+                  </Field>
+                  <Field label="PIS %" error={showError("aliquota_pis")}>
+                    <Input type="number" min="0" step="0.0001" value={form.aliquota_pis} onChange={(event) => updateField("aliquota_pis", event.target.value)} disabled={mutation.isPending} />
+                  </Field>
+                  <Field label="COFINS %" error={showError("aliquota_cofins")}>
+                    <Input type="number" min="0" step="0.0001" value={form.aliquota_cofins} onChange={(event) => updateField("aliquota_cofins", event.target.value)} disabled={mutation.isPending} />
+                  </Field>
+                </div>
+              </div>
 
               <div className="md:col-span-2">
                 <Field label="Observação">

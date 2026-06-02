@@ -69,6 +69,19 @@ def produto_snapshot(produto: Produto) -> dict[str, Any]:
         "custo_medio": str(produto.custo_medio),
         "estoque_atual": str(produto.estoque_atual),
         "estoque_minimo": str(produto.estoque_minimo),
+        "ncm": produto.ncm,
+        "cfop_padrao": produto.cfop_padrao,
+        "cst_csosn": produto.cst_csosn,
+        "cest": produto.cest,
+        "origem_mercadoria": produto.origem_mercadoria,
+        "unidade_tributavel": produto.unidade_tributavel,
+        "ean_tributavel": produto.ean_tributavel,
+        "codigo_beneficio_fiscal": produto.codigo_beneficio_fiscal,
+        "aliquota_icms": str(produto.aliquota_icms),
+        "aliquota_ipi": str(produto.aliquota_ipi),
+        "aliquota_pis": str(produto.aliquota_pis),
+        "aliquota_cofins": str(produto.aliquota_cofins),
+        "cadastro_fiscal_pronto": produto.cadastro_fiscal_pronto,
     }
 
 
@@ -343,6 +356,18 @@ def update_produto(*, user, produto: Produto, data: dict[str, Any], request=None
         "preco_venda",
         "custo_medio",
         "estoque_minimo",
+        "ncm",
+        "cfop_padrao",
+        "cst_csosn",
+        "cest",
+        "origem_mercadoria",
+        "unidade_tributavel",
+        "ean_tributavel",
+        "codigo_beneficio_fiscal",
+        "aliquota_icms",
+        "aliquota_ipi",
+        "aliquota_pis",
+        "aliquota_cofins",
     }
     for field, value in data.items():
         if field in updatable:

@@ -7,6 +7,7 @@ from django.db.models import Q
 
 from apps.core.models import BaseModel
 from apps.empresas.validators import clean_cnpj, is_valid_cnpj
+from apps.fiscal.validators import validate_cest, validate_cfop, validate_ncm
 
 
 ZERO_MONEY = Decimal("0.00")
@@ -121,6 +122,27 @@ class Fornecedor(BaseModel):
 
 
 class Produto(BaseModel):
+    ORIGEM_NACIONAL = "0"
+    ORIGEM_ESTRANGEIRA_DIRETA = "1"
+    ORIGEM_ESTRANGEIRA_MERCADO_INTERNO = "2"
+    ORIGEM_NACIONAL_IMPORTACAO_MAIOR_40 = "3"
+    ORIGEM_NACIONAL_PPB = "4"
+    ORIGEM_NACIONAL_IMPORTACAO_MENOR_IGUAL_40 = "5"
+    ORIGEM_ESTRANGEIRA_DIRETA_SEM_SIMILAR = "6"
+    ORIGEM_ESTRANGEIRA_MERCADO_INTERNO_SEM_SIMILAR = "7"
+    ORIGEM_NACIONAL_IMPORTACAO_MAIOR_70 = "8"
+    ORIGEM_CHOICES = [
+        (ORIGEM_NACIONAL, "Nacional"),
+        (ORIGEM_ESTRANGEIRA_DIRETA, "Estrangeira - importação direta"),
+        (ORIGEM_ESTRANGEIRA_MERCADO_INTERNO, "Estrangeira - adquirida no mercado interno"),
+        (ORIGEM_NACIONAL_IMPORTACAO_MAIOR_40, "Nacional com importação > 40%"),
+        (ORIGEM_NACIONAL_PPB, "Nacional PPB"),
+        (ORIGEM_NACIONAL_IMPORTACAO_MENOR_IGUAL_40, "Nacional com importação <= 40%"),
+        (ORIGEM_ESTRANGEIRA_DIRETA_SEM_SIMILAR, "Estrangeira direta sem similar"),
+        (ORIGEM_ESTRANGEIRA_MERCADO_INTERNO_SEM_SIMILAR, "Estrangeira mercado interno sem similar"),
+        (ORIGEM_NACIONAL_IMPORTACAO_MAIOR_70, "Nacional com importação > 70%"),
+    ]
+
     company = models.ForeignKey(
         "empresas.Empresa",
         on_delete=models.PROTECT,
@@ -177,6 +199,38 @@ class Produto(BaseModel):
         default=ZERO_QTY,
         validators=[MinValueValidator(ZERO_QTY)],
     )
+    ncm = models.CharField(max_length=8, blank=True)
+    cfop_padrao = models.CharField(max_length=4, blank=True)
+    cst_csosn = models.CharField(max_length=4, blank=True)
+    cest = models.CharField(max_length=7, blank=True)
+    origem_mercadoria = models.CharField(max_length=1, choices=ORIGEM_CHOICES, default=ORIGEM_NACIONAL)
+    unidade_tributavel = models.CharField(max_length=20, blank=True)
+    ean_tributavel = models.CharField(max_length=80, blank=True)
+    codigo_beneficio_fiscal = models.CharField(max_length=20, blank=True)
+    aliquota_icms = models.DecimalField(
+        max_digits=7,
+        decimal_places=4,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
+    )
+    aliquota_ipi = models.DecimalField(
+        max_digits=7,
+        decimal_places=4,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
+    )
+    aliquota_pis = models.DecimalField(
+        max_digits=7,
+        decimal_places=4,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
+    )
+    aliquota_cofins = models.DecimalField(
+        max_digits=7,
+        decimal_places=4,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
+    )
 
     class Meta(BaseModel.Meta):
         verbose_name = "Produto"
@@ -227,6 +281,15 @@ class Produto(BaseModel):
         self.nome = (self.nome or "").strip()
         self.sku = (self.sku or "").strip().upper()
         self.codigo_barras = (self.codigo_barras or "").strip()
+        self.ncm = validate_ncm(self.ncm)
+        self.cfop_padrao = validate_cfop(self.cfop_padrao)
+        self.cst_csosn = (self.cst_csosn or "").strip().upper()
+        self.cest = validate_cest(self.cest)
+        self.unidade_tributavel = (self.unidade_tributavel or "").strip().upper()
+        if not self.unidade_tributavel and self.unidade_id:
+            self.unidade_tributavel = self.unidade.sigla
+        self.ean_tributavel = (self.ean_tributavel or "").strip() or "SEM GTIN"
+        self.codigo_beneficio_fiscal = (self.codigo_beneficio_fiscal or "").strip().upper()
 
     def __str__(self):
         return self.nome
@@ -241,6 +304,16 @@ class Produto(BaseModel):
             return ZERO_MONEY
         margem = ((self.preco_venda - self.preco_compra) / self.preco_compra) * Decimal("100")
         return margem.quantize(Decimal("0.01"))
+
+    @property
+    def cadastro_fiscal_pronto(self) -> bool:
+        return all([
+            self.ncm,
+            self.cfop_padrao,
+            self.cst_csosn,
+            self.origem_mercadoria,
+            self.unidade_tributavel,
+        ])
 
 
 FATOR_MIN = Decimal("0.000001")

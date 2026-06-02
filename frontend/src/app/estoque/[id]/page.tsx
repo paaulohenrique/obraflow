@@ -217,6 +217,9 @@ export default function ProdutoDetalhePage() {
                     <Badge variant={semEstoque ? "error" : baixo ? "warning" : "success"}>
                       {semEstoque ? "Sem estoque" : baixo ? "Baixo" : "Normal"}
                     </Badge>
+                    <Badge variant={produto.cadastro_fiscal_pronto ? "success" : "warning"}>
+                      {produto.cadastro_fiscal_pronto ? "Fiscal pronto" : "Fiscal incompleto"}
+                    </Badge>
                   </div>
                 </div>
               </div>

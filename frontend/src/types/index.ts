@@ -50,6 +50,40 @@ export interface Empresa {
   updated_at: string
 }
 
+export type RegimeTributario = "SIMPLES_NACIONAL" | "LUCRO_PRESUMIDO" | "LUCRO_REAL"
+export type CrtFiscal = "1" | "2" | "3"
+export type AmbienteFiscal = "HOMOLOGACAO" | "PRODUCAO"
+export type ProviderFiscal = "FAKE" | "NFEIO" | "FOCUS_NFE" | "PLUGNOTAS"
+
+export interface ConfiguracaoFiscalEmpresa {
+  id: string
+  company_id: string
+  cnpj: string
+  razao_social: string
+  nome_fantasia: string
+  inscricao_estadual: string
+  inscricao_municipal: string
+  regime_tributario: RegimeTributario | ""
+  crt: CrtFiscal | ""
+  cnae: string
+  uf: string
+  municipio: string
+  municipio_ibge: string
+  logradouro: string
+  numero: string
+  complemento: string
+  bairro: string
+  cep: string
+  ambiente_fiscal: AmbienteFiscal
+  provider_fiscal: ProviderFiscal
+  provider_company_id: string
+  ativo: boolean
+  cadastro_fiscal_pronto: boolean
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface AuthTokens {
   access: string
   refresh: string
@@ -60,6 +94,7 @@ export interface AuthUser extends User {
 }
 
 export type TipoPessoa = "PF" | "PJ"
+export type IndicadorIE = "CONTRIBUINTE" | "ISENTO" | "NAO_CONTRIBUINTE"
 
 export interface Cliente {
   id: string
@@ -76,11 +111,18 @@ export interface Cliente {
   cidade?: string
   estado?: string
   complemento?: string
+  inscricao_estadual: string
+  indicador_ie: IndicadorIE
+  contribuinte_icms: boolean
+  municipio_ibge: string
+  codigo_pais: string
+  pais: string
   observacao?: string
   limite_credito: ApiDecimal
   saldo_devedor: ApiDecimal
   credito_disponivel: ApiDecimal
   inadimplente: boolean
+  cadastro_fiscal_pronto: boolean
   bloqueado: boolean
   data_ultimo_pagamento?: string | null
   is_active: boolean
@@ -103,6 +145,12 @@ export interface ClientePayload {
   cidade?: string
   estado?: string
   complemento?: string
+  inscricao_estadual?: string
+  indicador_ie?: IndicadorIE
+  contribuinte_icms?: boolean
+  municipio_ibge?: string
+  codigo_pais?: string
+  pais?: string
   observacao?: string
   limite_credito?: ApiDecimal
   data_ultimo_pagamento?: string | null
@@ -128,6 +176,19 @@ export interface Produto {
   estoque_minimo: ApiDecimal
   estoque_baixo: boolean
   margem_percentual: ApiDecimal
+  ncm: string
+  cfop_padrao: string
+  cst_csosn: string
+  cest: string
+  origem_mercadoria: string
+  unidade_tributavel: string
+  ean_tributavel: string
+  codigo_beneficio_fiscal: string
+  aliquota_icms: ApiDecimal
+  aliquota_ipi: ApiDecimal
+  aliquota_pis: ApiDecimal
+  aliquota_cofins: ApiDecimal
+  cadastro_fiscal_pronto: boolean
   is_active: boolean
   created_at: string
   updated_at: string
@@ -145,6 +206,18 @@ export interface ProdutoPayload {
   preco_venda?: ApiDecimal
   custo_medio?: ApiDecimal
   estoque_minimo?: ApiDecimal
+  ncm?: string
+  cfop_padrao?: string
+  cst_csosn?: string
+  cest?: string
+  origem_mercadoria?: string
+  unidade_tributavel?: string
+  ean_tributavel?: string
+  codigo_beneficio_fiscal?: string
+  aliquota_icms?: ApiDecimal
+  aliquota_ipi?: ApiDecimal
+  aliquota_pis?: ApiDecimal
+  aliquota_cofins?: ApiDecimal
 }
 
 export interface UnidadeMedida {
@@ -647,4 +720,3 @@ export interface NotaHistorico {
   created_by_nome: string
   created_at: string
 }
-

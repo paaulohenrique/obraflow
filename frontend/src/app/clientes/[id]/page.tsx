@@ -156,12 +156,18 @@ export default function ClienteDetalhePage() {
                   <span>Email</span>
                   <span className="truncate font-medium text-zinc-800">{cliente.email || "-"}</span>
                 </div>
-                <div className="flex justify-between gap-3">
-                  <span>Situação</span>
-                  <Badge variant={cliente.bloqueado ? "error" : cliente.is_active ? "success" : "outline"}>
-                    {cliente.bloqueado ? "Bloqueado" : cliente.is_active ? "Ativo" : "Inativo"}
-                  </Badge>
-                </div>
+              <div className="flex justify-between gap-3">
+                <span>Situação</span>
+                <Badge variant={cliente.bloqueado ? "error" : cliente.is_active ? "success" : "outline"}>
+                  {cliente.bloqueado ? "Bloqueado" : cliente.is_active ? "Ativo" : "Inativo"}
+                </Badge>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span>Fiscal</span>
+                <Badge variant={cliente.cadastro_fiscal_pronto ? "success" : "warning"}>
+                  {cliente.cadastro_fiscal_pronto ? "Pronto para NF-e" : "Incompleto"}
+                </Badge>
+              </div>
               </div>
             </CardContent>
           </Card>
@@ -339,6 +345,14 @@ export default function ClienteDetalhePage() {
                 <span className="font-medium text-zinc-800">
                   {cliente.data_ultimo_pagamento ? formatDate(cliente.data_ultimo_pagamento) : "-"}
                 </span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span>Indicador IE</span>
+                <span className="font-medium text-zinc-800">{cliente.indicador_ie || "-"}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span>Município IBGE</span>
+                <span className="font-medium text-zinc-800">{cliente.municipio_ibge || "-"}</span>
               </div>
               {cliente.observacao && (
                 <p className="rounded-md border border-zinc-100 bg-zinc-50 px-3 py-2 text-zinc-500">{cliente.observacao}</p>
