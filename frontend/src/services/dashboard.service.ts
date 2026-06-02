@@ -5,7 +5,7 @@ import { estoqueService } from "./estoque.service"
 import { fiadoService } from "./fiado.service"
 import { financeiroService } from "./financeiro.service"
 import { boletosService } from "./boletos.service"
-import { notasEntradaService } from "./documentos.service"
+import { notasEntradaService } from "./notas-entrada.service"
 
 function buildFluxoCaixa(items: DashboardResumo["financeiro"]["fluxo_diario"]): FluxoCaixaItem[] {
   const byDate = new Map<string, FluxoCaixaItem>()

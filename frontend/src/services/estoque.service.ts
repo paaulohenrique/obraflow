@@ -1,58 +1,57 @@
 import type {
-  CategoriaProduto,
-  FormaVendaProduto,
-  MovimentacaoEstoque,
-  PaginatedResponse,
   PaginationParams,
-  Produto,
-  Fornecedor,
+  ProdutoPayload,
 } from "@/types"
-import { api } from "./api"
-import { toQueryString } from "./query-params"
+import { formasVendaService } from "./formas-venda.service"
+import { movimentacoesEstoqueService } from "./movimentacoes-estoque.service"
+import { produtosService } from "./produtos.service"
 
 export const estoqueService = {
   async categorias(params?: PaginationParams) {
-    const response = await api.get<PaginatedResponse<CategoriaProduto>>(
-      `/estoque/categorias/${toQueryString(params)}`
-    )
-    return response.data
+    return produtosService.categorias(params)
+  },
+
+  async unidades(params?: PaginationParams) {
+    return produtosService.unidades(params)
   },
 
   async list(params?: PaginationParams) {
-    const response = await api.get<PaginatedResponse<Produto>>(`/estoque/produtos/${toQueryString(params)}`)
-    return response.data
+    return produtosService.list(params)
   },
 
   async lowStock(params?: PaginationParams) {
-    const response = await api.get<PaginatedResponse<Produto>>(
-      `/estoque/produtos/baixo-estoque/${toQueryString(params)}`
-    )
-    return response.data
+    return produtosService.lowStock(params)
   },
 
   async get(id: string) {
-    const response = await api.get<Produto>(`/estoque/produtos/${id}/`)
-    return response.data
+    return produtosService.get(id)
+  },
+
+  async create(payload: ProdutoPayload) {
+    return produtosService.create(payload)
+  },
+
+  async update(id: string, payload: Partial<ProdutoPayload>) {
+    return produtosService.update(id, payload)
+  },
+
+  async ativar(id: string) {
+    return produtosService.ativar(id)
+  },
+
+  async inativar(id: string) {
+    return produtosService.inativar(id)
   },
 
   async movimentacoes(id: string, params?: PaginationParams) {
-    const response = await api.get<PaginatedResponse<MovimentacaoEstoque>>(
-      `/estoque/produtos/${id}/movimentacoes/${toQueryString(params)}`
-    )
-    return response.data
+    return movimentacoesEstoqueService.byProduto(id, params)
   },
 
   async formasVenda(params?: PaginationParams & { produto?: string }) {
-    const response = await api.get<PaginatedResponse<FormaVendaProduto>>(
-      `/estoque/formas-venda/${toQueryString(params)}`
-    )
-    return response.data
+    return formasVendaService.list(params)
   },
 
   async fornecedores(params?: PaginationParams) {
-    const response = await api.get<PaginatedResponse<Fornecedor>>(
-      `/estoque/fornecedores/${toQueryString(params)}`
-    )
-    return response.data
+    return produtosService.fornecedores(params)
   },
 }

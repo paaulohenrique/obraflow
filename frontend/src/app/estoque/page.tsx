@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { AlertTriangle, Package, Search } from "lucide-react"
+import { ArrowRightLeft, Package, PackagePlus, Search, AlertTriangle } from "lucide-react"
 import { Shell } from "@/components/layout/shell"
 import { Topbar } from "@/components/layout/topbar"
 import { Button } from "@/components/ui/button"
@@ -11,17 +11,21 @@ import { ErrorState } from "@/components/ui/error-state"
 import { Input } from "@/components/ui/input"
 import { StatCard } from "@/components/ui/stat-card"
 import { EstoqueTable } from "@/features/estoque/estoque-table"
+import { MovimentacaoEstoqueDialog } from "@/features/estoque/movimentacao-estoque-dialog"
+import { ProdutoFormDialog } from "@/features/estoque/produto-form-dialog"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import { estoqueService } from "@/services/estoque.service"
 import type { FormaVendaProduto } from "@/types"
 
-type Filter = "todos" | "baixo"
+type Filter = "todos" | "baixo" | "ativos" | "inativos"
 
 export default function EstoquePage() {
   const [search, setSearch] = useState("")
   const [page, setPage] = useState(1)
   const [filter, setFilter] = useState<Filter>("todos")
   const [categoria, setCategoria] = useState("")
+  const [produtoDialogOpen, setProdutoDialogOpen] = useState(false)
+  const [movimentacaoDialogOpen, setMovimentacaoDialogOpen] = useState(false)
   const debouncedSearch = useDebouncedValue(search.trim(), 300)
 
   const produtosQuery = useQuery({
@@ -34,6 +38,8 @@ export default function EstoquePage() {
         ordering: "nome",
         ...(categoria ? { categoria } : {}),
         ...(filter === "baixo" ? { estoque_baixo: true } : {}),
+        ...(filter === "ativos" ? { is_active: true } : {}),
+        ...(filter === "inativos" ? { is_active: false } : {}),
       }),
     staleTime: 30_000,
   })
@@ -72,7 +78,29 @@ export default function EstoquePage() {
 
   return (
     <Shell>
-      <Topbar title="Estoque" subtitle="Produtos, saldos e formas de venda" />
+      <Topbar
+        title="Estoque"
+        subtitle="Produtos, saldos, formas de venda e movimentações"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<ArrowRightLeft className="size-3.5" />}
+              onClick={() => setMovimentacaoDialogOpen(true)}
+            >
+              Movimentar
+            </Button>
+            <Button
+              size="sm"
+              icon={<PackagePlus className="size-3.5" />}
+              onClick={() => setProdutoDialogOpen(true)}
+            >
+              Novo Produto
+            </Button>
+          </>
+        }
+      />
 
       <main className="flex-1 space-y-5 p-6">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -105,6 +133,8 @@ export default function EstoquePage() {
             <div className="flex gap-1">
               {[
                 ["todos", "Todos"],
+                ["ativos", "Ativos"],
+                ["inativos", "Inativos"],
                 ["baixo", "Estoque baixo"],
               ].map(([value, label]) => (
                 <button
@@ -190,6 +220,9 @@ export default function EstoquePage() {
             </div>
           </div>
         </Card>
+
+        <ProdutoFormDialog open={produtoDialogOpen} onOpenChange={setProdutoDialogOpen} />
+        <MovimentacaoEstoqueDialog open={movimentacaoDialogOpen} onOpenChange={setMovimentacaoDialogOpen} />
       </main>
     </Shell>
   )

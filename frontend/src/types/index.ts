@@ -133,6 +133,31 @@ export interface Produto {
   updated_at: string
 }
 
+export interface ProdutoPayload {
+  nome: string
+  descricao?: string
+  sku?: string
+  codigo_barras?: string
+  categoria: string
+  fornecedor_principal?: string | null
+  unidade: string
+  preco_compra?: ApiDecimal
+  preco_venda?: ApiDecimal
+  custo_medio?: ApiDecimal
+  estoque_minimo?: ApiDecimal
+}
+
+export interface UnidadeMedida {
+  id: string
+  company_id: string
+  nome: string
+  sigla: string
+  descricao?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface CategoriaProduto {
   id: string
   company_id: string
@@ -160,6 +185,27 @@ export interface FormaVendaProduto {
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export interface FormaVendaProdutoPayload {
+  produto: string
+  nome: string
+  codigo?: string
+  unidade: string
+  fator_conversao: ApiDecimal
+  preco_venda?: ApiDecimal
+  ativo?: boolean
+  padrao?: boolean
+  permite_fracionado?: boolean
+}
+
+export interface FormaVendaProdutoUpdatePayload {
+  nome?: string
+  codigo?: string
+  unidade?: string
+  fator_conversao?: ApiDecimal
+  preco_venda?: ApiDecimal
+  permite_fracionado?: boolean
 }
 
 export type TipoMovimentacao = "ENTRADA" | "SAIDA" | "AJUSTE" | "DEVOLUCAO" | "CANCELAMENTO"
@@ -190,6 +236,19 @@ export interface MovimentacaoEstoque {
   movimentacao_cancelada: string | null
   created_at: string
   updated_at: string
+}
+
+export interface MovimentacaoEstoquePayload {
+  produto: string
+  quantidade?: ApiDecimal
+  forma_venda?: string | null
+  quantidade_informada?: ApiDecimal | null
+  custo_unitario?: ApiDecimal | null
+  fornecedor?: string | null
+  motivo?: string
+  observacao?: string
+  idempotency_key?: string
+  metadata?: Record<string, unknown>
 }
 
 export type StatusContaFiado = "ABERTA" | "FECHADA" | "CANCELADA"
@@ -377,10 +436,12 @@ export interface DashboardResumo {
 export interface Fornecedor {
   id: string
   company_id: string
-  nome: string
+  razao_social: string
+  nome_fantasia: string
   cnpj: string
   telefone?: string
   email?: string
+  observacoes?: string
   is_active: boolean
   created_at: string
   updated_at: string
@@ -510,9 +571,16 @@ export interface NotaEntrada {
   fornecedor_cnpj_xml: string
   fornecedor: string | null
   valor_total: ApiDecimal
+  conta_pagar: string | null
   itens_total: number
   itens_sem_produto: number
   created_at: string
+}
+
+export interface NotaEntradaUploadPayload {
+  arquivo: File
+  observacao?: string
+  idempotency_key?: string
 }
 
 export interface DashboardNotasEntrada {
@@ -579,5 +647,4 @@ export interface NotaHistorico {
   created_by_nome: string
   created_at: string
 }
-
 

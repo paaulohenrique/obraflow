@@ -112,7 +112,7 @@ export function EstoqueTable({ produtos, formasByProduto = {}, loading }: Estoqu
               key={produto.id}
               clickable
               onMouseEnter={() => handlePrefetch(produto.id)}
-              className="hover:bg-zinc-50/40 transition-colors"
+              className={cn("hover:bg-zinc-50/40 transition-colors", !produto.is_active && "opacity-65")}
             >
               {/* Produto Typography Stack */}
               <Td className="py-3">
@@ -170,8 +170,8 @@ export function EstoqueTable({ produtos, formasByProduto = {}, loading }: Estoqu
               {/* Última Movimentação & Status */}
               <Td className="py-3">
                 <div className="flex items-center gap-2">
-                  <Badge variant={semEstoque ? "error" : baixo ? "warning" : "success"}>
-                    {semEstoque ? "Sem estoque" : baixo ? "Baixo" : "Normal"}
+                  <Badge variant={!produto.is_active ? "outline" : semEstoque ? "error" : baixo ? "warning" : "success"}>
+                    {!produto.is_active ? "Inativo" : semEstoque ? "Sem estoque" : baixo ? "Baixo" : "Normal"}
                   </Badge>
                   <span className="text-xs text-zinc-500">
                     {formatRelativeDate(produto.updated_at)}

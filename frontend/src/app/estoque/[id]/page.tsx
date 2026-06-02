@@ -2,21 +2,52 @@
 
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, History, Package, Ruler, XCircle } from "lucide-react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  ArrowDownToLine,
+  ArrowLeft,
+  ArrowUpFromLine,
+  History,
+  Package,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Ruler,
+  SlidersHorizontal,
+  XCircle,
+} from "lucide-react"
+import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table"
+import { FormaVendaDialog } from "@/features/estoque/forma-venda-dialog"
+import { MovimentacaoEstoqueDialog } from "@/features/estoque/movimentacao-estoque-dialog"
+import { ProdutoFormDialog } from "@/features/estoque/produto-form-dialog"
+import { useApiToast } from "@/hooks/use-api-toast"
 import { Shell } from "@/components/layout/shell"
 import { Topbar } from "@/components/layout/topbar"
 import { formatCurrency, formatDate } from "@/lib/utils"
 import { formatNumber, toNumber } from "@/lib/format"
 import { estoqueService } from "@/services/estoque.service"
+import { formasVendaService } from "@/services/formas-venda.service"
+import { produtosService } from "@/services/produtos.service"
+import type { FormaVendaProduto, TipoMovimentacao } from "@/types"
+
+type OperacaoTipo = Extract<TipoMovimentacao, "ENTRADA" | "SAIDA" | "AJUSTE" | "DEVOLUCAO">
 
 export default function ProdutoDetalhePage() {
   const { id } = useParams<{ id: string }>()
+  const queryClient = useQueryClient()
+  const toast = useApiToast()
+  const [produtoDialogOpen, setProdutoDialogOpen] = useState(false)
+  const [formaDialogOpen, setFormaDialogOpen] = useState(false)
+  const [formaEmEdicao, setFormaEmEdicao] = useState<FormaVendaProduto | null>(null)
+  const [movimentacao, setMovimentacao] = useState<{ open: boolean; tipo: OperacaoTipo }>({
+    open: false,
+    tipo: "ENTRADA",
+  })
 
   const produtoQuery = useQuery({
     queryKey: ["estoque", "produtos", id],
@@ -39,6 +70,28 @@ export default function ProdutoDetalhePage() {
   })
 
   const produto = produtoQuery.data
+
+  const produtoStatusMutation = useMutation({
+    mutationFn: () => (produto?.is_active ? produtosService.inativar(produto.id) : produtosService.ativar(produto!.id)),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["estoque"] })
+      toast.success(produto?.is_active ? "Produto inativado" : "Produto ativado")
+    },
+    onError: (error) => toast.error(error),
+  })
+
+  const formaActionMutation = useMutation({
+    mutationFn: ({ forma, action }: { forma: FormaVendaProduto; action: "padrao" | "ativar" | "inativar" }) => {
+      if (action === "padrao") return formasVendaService.definirPadrao(forma.id)
+      if (action === "ativar") return formasVendaService.ativar(forma.id)
+      return formasVendaService.inativar(forma.id)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["estoque"] })
+      toast.success("Forma de venda atualizada")
+    },
+    onError: (error) => toast.error(error),
+  })
 
   if (produtoQuery.isLoading) {
     return (
@@ -82,11 +135,29 @@ export default function ProdutoDetalhePage() {
         title={produto.nome}
         subtitle={`SKU ${produto.sku || "-"} · Unidade base ${produto.unidade_sigla}`}
         actions={
-          <Link href="/estoque">
-            <Button variant="ghost" size="sm" icon={<ArrowLeft className="size-3.5" />}>
-              Voltar
+          <>
+            <Link href="/estoque">
+              <Button variant="ghost" size="sm" icon={<ArrowLeft className="size-3.5" />}>
+                Voltar
+              </Button>
+            </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              icon={<Pencil className="size-3.5" />}
+              onClick={() => setProdutoDialogOpen(true)}
+            >
+              Editar
             </Button>
-          </Link>
+            <Button
+              variant={produto.is_active ? "outline" : "primary"}
+              size="sm"
+              loading={produtoStatusMutation.isPending}
+              onClick={() => produtoStatusMutation.mutate()}
+            >
+              {produto.is_active ? "Inativar" : "Ativar"}
+            </Button>
+          </>
         }
       />
 
@@ -139,7 +210,10 @@ export default function ProdutoDetalhePage() {
                 </div>
                 <div>
                   <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Status</span>
-                  <div className="mt-2">
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Badge variant={produto.is_active ? "success" : "outline"}>
+                      {produto.is_active ? "Ativo" : "Inativo"}
+                    </Badge>
                     <Badge variant={semEstoque ? "error" : baixo ? "warning" : "success"}>
                       {semEstoque ? "Sem estoque" : baixo ? "Baixo" : "Normal"}
                     </Badge>
@@ -163,6 +237,26 @@ export default function ProdutoDetalhePage() {
                   />
                 </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-2 border-t border-zinc-100 pt-4 md:grid-cols-4">
+                {[
+                  ["ENTRADA", "Entrada", <ArrowDownToLine key="entrada" className="size-3.5" />],
+                  ["SAIDA", "Saída", <ArrowUpFromLine key="saida" className="size-3.5" />],
+                  ["AJUSTE", "Ajuste", <SlidersHorizontal key="ajuste" className="size-3.5" />],
+                  ["DEVOLUCAO", "Devolução", <RotateCcw key="devolucao" className="size-3.5" />],
+                ].map(([tipo, label, icon]) => (
+                  <Button
+                    key={tipo as string}
+                    variant="outline"
+                    size="sm"
+                    disabled={!produto.is_active}
+                    icon={icon as React.ReactNode}
+                    onClick={() => setMovimentacao({ open: true, tipo: tipo as OperacaoTipo })}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -173,7 +267,21 @@ export default function ProdutoDetalhePage() {
               <Ruler className="size-4 text-zinc-400" />
               <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-900">Formas de Venda</h3>
             </div>
-            <Badge variant="outline">{formasQuery.data?.count ?? 0}</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">{formasQuery.data?.count ?? 0}</Badge>
+              <Button
+                variant="outline"
+                size="xs"
+                icon={<Plus className="size-3.5" />}
+                disabled={!produto.is_active}
+                onClick={() => {
+                  setFormaEmEdicao(null)
+                  setFormaDialogOpen(true)
+                }}
+              >
+                Nova Forma
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             {formasQuery.isLoading ? (
@@ -194,6 +302,7 @@ export default function ProdutoDetalhePage() {
                     <Th className="text-right">Fator</Th>
                     <Th className="text-right">Preço</Th>
                     <Th>Status</Th>
+                    <Th className="text-right">Ações</Th>
                   </tr>
                 </Thead>
                 <Tbody>
@@ -208,6 +317,42 @@ export default function ProdutoDetalhePage() {
                       <Td className="text-right tabular-nums">{formatCurrency(forma.preco_venda)}</Td>
                       <Td>
                         <Badge variant={forma.ativo ? "success" : "outline"}>{forma.padrao ? "Padrão" : forma.ativo ? "Ativa" : "Inativa"}</Badge>
+                      </Td>
+                      <Td className="text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            icon={<Pencil className="size-3" />}
+                            onClick={() => {
+                              setFormaEmEdicao(forma)
+                              setFormaDialogOpen(true)
+                            }}
+                          />
+                          {!forma.padrao && forma.ativo && (
+                            <Button
+                              variant="outline"
+                              size="xs"
+                              loading={formaActionMutation.isPending}
+                              onClick={() => formaActionMutation.mutate({ forma, action: "padrao" })}
+                            >
+                              Padrão
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            loading={formaActionMutation.isPending}
+                            onClick={() =>
+                              formaActionMutation.mutate({
+                                forma,
+                                action: forma.ativo ? "inativar" : "ativar",
+                              })
+                            }
+                          >
+                            {forma.ativo ? "Inativar" : "Ativar"}
+                          </Button>
+                        </div>
                       </Td>
                     </Tr>
                   ))}
@@ -273,6 +418,26 @@ export default function ProdutoDetalhePage() {
             )}
           </CardContent>
         </Card>
+
+        <ProdutoFormDialog
+          open={produtoDialogOpen}
+          onOpenChange={setProdutoDialogOpen}
+          produto={produto}
+        />
+        <FormaVendaDialog
+          open={formaDialogOpen}
+          onOpenChange={setFormaDialogOpen}
+          produtoId={produto.id}
+          unidadeBase={produto.unidade_sigla}
+          forma={formaEmEdicao}
+        />
+        <MovimentacaoEstoqueDialog
+          open={movimentacao.open}
+          onOpenChange={(open) => setMovimentacao((current) => ({ ...current, open }))}
+          produto={produto}
+          tipoInicial={movimentacao.tipo}
+          bloquearProduto
+        />
       </main>
     </Shell>
   )

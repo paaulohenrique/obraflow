@@ -1,9 +1,10 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { FileCode, PackageOpen } from "lucide-react"
+import { CheckCircle2, Eye, FileCode, History, PackageOpen, Plus, XCircle } from "lucide-react"
 import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { StatCard } from "@/components/ui/stat-card"
@@ -11,11 +12,15 @@ import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table"
 import { Shell } from "@/components/layout/shell"
 import { Topbar } from "@/components/layout/topbar"
 import { formatCurrency, formatDate, formatDocument } from "@/lib/utils"
-import { notasEntradaService } from "@/services/documentos.service"
+import { statusLabel } from "@/lib/format"
+import { notasEntradaService } from "@/services/notas-entrada.service"
+import { NfeUploadModal } from "@/features/fiscal/nfe-upload-modal"
 import { NotaReviewDrawer } from "@/features/fiscal/nota-review-drawer"
 
 export default function FiscalPage() {
   const [selectedNotaId, setSelectedNotaId] = useState<string | null>(null)
+  const [uploadOpen, setUploadOpen] = useState(false)
+  const [drawerIntent, setDrawerIntent] = useState<"review" | "history">("review")
 
   const dashboardQuery = useQuery({
     queryKey: ["notas-entrada", "dashboard"],
@@ -31,7 +36,15 @@ export default function FiscalPage() {
 
   return (
     <Shell>
-      <Topbar title="Notas de Entrada" subtitle="XML de fornecedor e conciliação fiscal" />
+      <Topbar
+        title="Nota Fiscal de Entrada"
+        subtitle="Importe XML de compra, revise os itens e lance no estoque."
+        actions={
+          <Button size="sm" icon={<Plus className="size-3.5" />} onClick={() => setUploadOpen(true)}>
+            Adicionar NF-e
+          </Button>
+        }
+      />
 
       <main className="flex-1 space-y-5 p-6">
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -68,7 +81,9 @@ export default function FiscalPage() {
                     <Th className="text-right">Valor</Th>
                     <Th>Emissão</Th>
                     <Th className="text-right">Itens</Th>
+                    <Th>Conta a pagar</Th>
                     <Th>Status</Th>
+                    <Th className="text-right">Ações</Th>
                   </tr>
                 </Thead>
                 <Tbody>
@@ -76,7 +91,10 @@ export default function FiscalPage() {
                     <Tr
                       key={nota.id}
                       clickable
-                      onClick={() => setSelectedNotaId(nota.id)}
+                      onClick={() => {
+                        setDrawerIntent("review")
+                        setSelectedNotaId(nota.id)
+                      }}
                       className="hover:bg-zinc-50/40 transition-colors"
                     >
                       <Td className="font-mono text-xs font-semibold text-zinc-700">{nota.numero || "-"}</Td>
@@ -89,9 +107,68 @@ export default function FiscalPage() {
                         {nota.itens_sem_produto > 0 && <span className="ml-1 text-red-600 font-bold">({nota.itens_sem_produto})</span>}
                       </Td>
                       <Td>
-                        <Badge variant={nota.status === "CONFIRMADA" ? "success" : nota.status === "REJEITADA" ? "error" : "warning"}>
-                          {nota.status}
+                        <Badge variant={nota.conta_pagar ? "success" : "outline"}>
+                          {nota.conta_pagar ? "Criada" : "Não criada"}
                         </Badge>
+                      </Td>
+                      <Td>
+                        <Badge variant={nota.status === "CONFIRMADA" ? "success" : nota.status === "REJEITADA" ? "error" : "warning"}>
+                          {statusLabel(nota.status)}
+                        </Badge>
+                      </Td>
+                      <Td className="text-right">
+                        <div className="flex justify-end gap-1.5">
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            icon={<Eye className="size-3.5" />}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setDrawerIntent("review")
+                              setSelectedNotaId(nota.id)
+                            }}
+                          >
+                            Revisar
+                          </Button>
+                          {nota.status === "AGUARDANDO_REVISAO" && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                icon={<CheckCircle2 className="size-3.5" />}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setDrawerIntent("review")
+                                  setSelectedNotaId(nota.id)
+                                }}
+                              >
+                                Confirmar
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                icon={<XCircle className="size-3.5" />}
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setDrawerIntent("review")
+                                  setSelectedNotaId(nota.id)
+                                }}
+                              >
+                                Rejeitar
+                              </Button>
+                            </>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            icon={<History className="size-3.5" />}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              setDrawerIntent("history")
+                              setSelectedNotaId(nota.id)
+                            }}
+                          />
+                        </div>
                       </Td>
                     </Tr>
                   ))}
@@ -104,8 +181,19 @@ export default function FiscalPage() {
         {/* Mapeamento lateral de nota fiscal */}
         <NotaReviewDrawer
           notaId={selectedNotaId}
+          initialHistoryOpen={drawerIntent === "history"}
           onClose={() => {
             setSelectedNotaId(null)
+            dashboardQuery.refetch()
+            notasQuery.refetch()
+          }}
+        />
+        <NfeUploadModal
+          open={uploadOpen}
+          onOpenChange={setUploadOpen}
+          onSuccess={(notaId) => {
+            setDrawerIntent("review")
+            setSelectedNotaId(notaId)
             dashboardQuery.refetch()
             notasQuery.refetch()
           }}

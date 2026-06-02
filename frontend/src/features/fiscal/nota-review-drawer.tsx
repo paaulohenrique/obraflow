@@ -3,30 +3,27 @@
 import * as Dialog from "@radix-ui/react-dialog"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
-  AlertTriangle,
   Check,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
   CornerDownRight,
   FileCode,
-  HelpCircle,
-  HelpCircle as QuestionIcon,
-  Search,
+  History,
   Sparkles,
   Trash2,
   X,
   XCircle,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useApiToast } from "@/hooks/use-api-toast"
-import { cn, formatCurrency, formatDate, formatDocument } from "@/lib/utils"
-import { formatNumber, toNumber } from "@/lib/format"
-import { notasEntradaService } from "@/services/documentos.service"
+import { fornecedorDisplayName } from "@/lib/estoque"
+import { cn, formatCurrency, formatDate, formatDatetime, formatDocument } from "@/lib/utils"
+import { formatNumber, statusLabel } from "@/lib/format"
+import { notasEntradaService } from "@/services/notas-entrada.service"
 import { estoqueService } from "@/services/estoque.service"
 import { financeiroService } from "@/services/financeiro.service"
 import { ProdutoAutocomplete } from "@/features/fiado/produto-autocomplete"
@@ -34,15 +31,17 @@ import type { NotaItem, ProductSuggestion, Produto } from "@/types"
 
 interface NotaReviewDrawerProps {
   notaId: string | null
+  initialHistoryOpen?: boolean
   onClose: () => void
 }
 
-export function NotaReviewDrawer({ notaId, onClose }: NotaReviewDrawerProps) {
+export function NotaReviewDrawer({ notaId, initialHistoryOpen = false, onClose }: NotaReviewDrawerProps) {
   const queryClient = useQueryClient()
   const toast = useApiToast()
   const [confirming, setConfirming] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [motivoRejeicao, setMotivoRejeicao] = useState("")
+  const [showHistory, setShowHistory] = useState(initialHistoryOpen)
 
   // Payable settings on confirmation
   const [criarContaPagar, setCriarContaPagar] = useState(false)
@@ -77,6 +76,13 @@ export function NotaReviewDrawer({ notaId, onClose }: NotaReviewDrawerProps) {
     queryFn: () => financeiroService.categorias({ page_size: 100, tipo: "DESPESA" }),
     enabled: open && confirming,
     staleTime: 60000,
+  })
+
+  const historicoQuery = useQuery({
+    queryKey: ["notas-entrada", notaId, "historico"],
+    queryFn: () => notasEntradaService.historico(notaId!, { page_size: 20 }),
+    enabled: open && showHistory && Boolean(notaId),
+    staleTime: 15_000,
   })
 
   const vincularFornecedorMutation = useMutation({
@@ -128,11 +134,20 @@ export function NotaReviewDrawer({ notaId, onClose }: NotaReviewDrawerProps) {
   const nota = notaQuery.data
   const fornecedores = fornecedoresQuery.data?.results ?? []
   const categorias = categoriasQuery.data?.results ?? []
+  const [notaStateKey, setNotaStateKey] = useState("closed")
+  const nextNotaStateKey = nota
+    ? `${nota.id}:${nota.fornecedor ?? ""}:${initialHistoryOpen ? "history" : "review"}`
+    : "closed"
 
-  const [prevNotaId, setPrevNotaId] = useState<string | null>(null)
-  if (nota && nota.id !== prevNotaId) {
-    setPrevNotaId(nota.id)
-    setFornecedorSelecionado(nota.fornecedor || "")
+  if (notaStateKey !== nextNotaStateKey) {
+    setNotaStateKey(nextNotaStateKey)
+    if (nota) {
+      setFornecedorSelecionado(nota.fornecedor || "")
+      setConfirming(false)
+      setRejecting(false)
+      setMotivoRejeicao("")
+      setShowHistory(initialHistoryOpen)
+    }
   }
 
   if (!open) return null
@@ -203,7 +218,7 @@ export function NotaReviewDrawer({ notaId, onClose }: NotaReviewDrawerProps) {
                       <p className="text-xl font-bold text-zinc-950 font-mono">#{nota.numero} <span className="text-xs text-zinc-400 font-normal">Série {nota.serie}</span></p>
                     </div>
                     <Badge variant={nota.status === "CONFIRMADA" ? "success" : nota.status === "REJEITADA" ? "error" : "warning"} className="font-semibold">
-                      {nota.status}
+                      {statusLabel(nota.status)}
                     </Badge>
                   </div>
 
@@ -252,7 +267,7 @@ export function NotaReviewDrawer({ notaId, onClose }: NotaReviewDrawerProps) {
                       <option value="">-- Selecione Fornecedor --</option>
                       {fornecedores.map((f) => (
                         <option key={f.id} value={f.id}>
-                          {f.nome} ({formatDocument(f.cnpj)})
+                          {fornecedorDisplayName(f)} ({formatDocument(f.cnpj)})
                         </option>
                       ))}
                     </select>
@@ -268,6 +283,53 @@ export function NotaReviewDrawer({ notaId, onClose }: NotaReviewDrawerProps) {
                       </Button>
                     )}
                   </div>
+                </div>
+
+                <div className="space-y-2 border-t border-zinc-150 pt-5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-center"
+                    icon={<History className="size-3.5" />}
+                    onClick={() => setShowHistory((value) => !value)}
+                  >
+                    {showHistory ? "Ocultar Histórico" : "Ver Histórico"}
+                  </Button>
+
+                  {showHistory && (
+                    <div className="max-h-64 overflow-y-auto rounded-lg border border-zinc-150 bg-white">
+                      {historicoQuery.isLoading ? (
+                        <div className="space-y-2 p-3">
+                          <Skeleton className="h-9 w-full" />
+                          <Skeleton className="h-9 w-full" />
+                        </div>
+                      ) : (historicoQuery.data?.results ?? []).length === 0 ? (
+                        <div className="px-3 py-6 text-center text-[11px] text-zinc-400">
+                          Nenhum evento registrado.
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-zinc-100">
+                          {(historicoQuery.data?.results ?? []).map((evento) => (
+                            <div key={evento.id} className="p-3 text-xs">
+                              <div className="flex items-start justify-between gap-3">
+                                <span className="font-bold text-zinc-900">{statusLabel(evento.evento)}</span>
+                                <span className="shrink-0 text-[10px] text-zinc-400">
+                                  {formatDatetime(evento.created_at)}
+                                </span>
+                              </div>
+                              <p className="mt-1 leading-relaxed text-zinc-500">{evento.descricao}</p>
+                              {evento.created_by_nome && (
+                                <p className="mt-1 text-[10px] font-medium text-zinc-400">
+                                  {evento.created_by_nome}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Confirm / Reject forms */}
@@ -502,7 +564,13 @@ function XMLItemRow({
   })
 
   const suggestions = suggestionsQuery.data ?? []
-  const formasVenda = formasVendaQuery.data?.results ?? []
+  const formasVenda = (formasVendaQuery.data?.results ?? []).filter((forma) => forma.ativo)
+  const selectedFormaObj = formasVenda.find((forma) => forma.id === selectedForma) ?? null
+  const requiresForma = Boolean(selectedProduct && formasVenda.length > 1)
+  const quantidadeConvertidaPreview = selectedFormaObj
+    ? Number(item.quantidade) * Number(selectedFormaObj.fator_conversao)
+    : Number(item.quantidade)
+  const canApplyLink = Boolean(selectedProduct && (!requiresForma || selectedForma))
 
   // Initialize linkage inputs on edit mode open
   const startEditing = () => {
@@ -511,7 +579,7 @@ function XMLItemRow({
   }
 
   const handleApplyLink = () => {
-    if (!selectedProduct) return
+    if (!canApplyLink || !selectedProduct) return
     linkItemMutation.mutate({
       produto: selectedProduct.id,
       forma_venda: selectedForma || null,
@@ -573,7 +641,7 @@ function XMLItemRow({
         {/* Badge Vínculo */}
         <div className="flex items-center gap-2 flex-shrink-0">
           {item.ignorado ? (
-            <Badge variant="outline" className="bg-zinc-100 text-zinc-500 font-semibold border-zinc-200">IGNORED</Badge>
+            <Badge variant="outline" className="bg-zinc-100 text-zinc-500 font-semibold border-zinc-200">IGNORADO</Badge>
           ) : item.produto ? (
             <div className="text-right">
               <Badge variant="success" className="font-bold flex items-center gap-1">
@@ -674,6 +742,7 @@ function XMLItemRow({
                             type="button"
                             onClick={() => {
                               setSelectedProduct(sug)
+                              setSelectedForma("")
                               setCustoUnitario(item.valor_unitario.toString())
                             }}
                             className="text-left p-2.5 rounded-lg border border-zinc-200 bg-white hover:border-orange-300 hover:bg-orange-50/10 transition-colors flex items-center justify-between gap-3 group"
@@ -707,7 +776,14 @@ function XMLItemRow({
                         <p className="text-xs font-bold text-zinc-900">{selectedProduct.nome}</p>
                         <p className="text-[10px] text-zinc-400 mt-0.5">SKU: {selectedProduct.sku || "sem SKU"}</p>
                       </div>
-                      <Button variant="ghost" size="xs" onClick={() => setSelectedProduct(null)}>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        onClick={() => {
+                          setSelectedProduct(null)
+                          setSelectedForma("")
+                        }}
+                      >
                         Limpar
                       </Button>
                     </div>
@@ -716,9 +792,13 @@ function XMLItemRow({
                       value={null}
                       onSelect={(p) => {
                         setSelectedProduct(p)
+                        setSelectedForma("")
                         setCustoUnitario(item.valor_unitario.toString())
                       }}
-                      onClear={() => setSelectedProduct(null)}
+                      onClear={() => {
+                        setSelectedProduct(null)
+                        setSelectedForma("")
+                      }}
                     />
                   )}
                 </div>
@@ -736,15 +816,32 @@ function XMLItemRow({
                       <select
                         value={selectedForma}
                         onChange={(e) => setSelectedForma(e.target.value)}
-                        className="block w-full text-xs font-semibold h-8 rounded-md border border-zinc-300 bg-white px-2 focus:border-zinc-900 focus:outline-none"
+                        className={cn(
+                          "block h-8 w-full rounded-md border bg-white px-2 text-xs font-semibold focus:border-zinc-900 focus:outline-none",
+                          requiresForma && !selectedForma ? "border-red-300" : "border-zinc-300"
+                        )}
                       >
-                        <option value="">Unidade Base ({("unidade_sigla" in selectedProduct && selectedProduct.unidade_sigla) || "un"})</option>
+                        <option value="">
+                          {requiresForma
+                            ? "Selecione a forma"
+                            : `Unidade Base (${("unidade_sigla" in selectedProduct && selectedProduct.unidade_sigla) || "un"})`}
+                        </option>
                         {formasVenda.map((f) => (
                           <option key={f.id} value={f.id}>
                             {f.nome} (Fator: {f.fator_conversao}x)
                           </option>
                         ))}
                       </select>
+                      {requiresForma && !selectedForma && (
+                        <p className="text-[10px] font-medium text-red-600">
+                          Produto com múltiplas formas exige seleção.
+                        </p>
+                      )}
+                      <p className="text-[10px] text-zinc-500">
+                        {selectedFormaObj
+                          ? `${formatNumber(item.quantidade, 2)} ${selectedFormaObj.unidade} x ${formatNumber(selectedFormaObj.fator_conversao, 3)} = ${formatNumber(quantidadeConvertidaPreview, 3)} ${("unidade_sigla" in selectedProduct && selectedProduct.unidade_sigla) || "un"}`
+                          : `${formatNumber(item.quantidade, 2)} ${("unidade_sigla" in selectedProduct && selectedProduct.unidade_sigla) || "un"}`}
+                      </p>
                     </div>
 
                     {/* Custo Unitário */}
@@ -788,6 +885,7 @@ function XMLItemRow({
                     size="sm"
                     className="bg-orange-500 hover:bg-orange-600 text-white font-bold"
                     loading={linkItemMutation.isPending}
+                    disabled={!canApplyLink || linkItemMutation.isPending}
                     onClick={handleApplyLink}
                   >
                     Salvar Vínculo

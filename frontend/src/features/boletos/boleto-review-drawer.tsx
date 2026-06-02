@@ -28,6 +28,7 @@ import { useApiToast } from "@/hooks/use-api-toast"
 import { boletosService } from "@/services/boletos.service"
 import { estoqueService } from "@/services/estoque.service"
 import { financeiroService } from "@/services/financeiro.service"
+import { fornecedorDisplayName } from "@/lib/estoque"
 import { formatDate, cn } from "@/lib/utils"
 import { formatNumber } from "@/lib/format"
 
@@ -497,7 +498,7 @@ export function BoletoReviewDrawer({ boletoId, onClose }: BoletoReviewDrawerProp
                         >
                           <option value="">Selecione fornecedor (opcional)...</option>
                           {fornecedores.map(forn => (
-                            <option key={forn.id} value={forn.id}>{forn.nome} ({forn.cnpj})</option>
+                            <option key={forn.id} value={forn.id}>{fornecedorDisplayName(forn)} ({forn.cnpj})</option>
                           ))}
                         </select>
                         {errors.fornecedor && <p className="text-xs text-red-600">{errors.fornecedor.message}</p>}
