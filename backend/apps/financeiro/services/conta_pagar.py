@@ -173,10 +173,27 @@ def pagar_conta_pagar(
     if valor > conta.valor_restante:
         raise ValidationError({"valor": "Pagamento maior que o valor restante."})
 
+    from ..models import ContaFinanceira
+    conta_financeira = data["conta_financeira"]
+    saldo_atual = (
+        ContaFinanceira.objects.filter(pk=conta_financeira.pk)
+        .values_list("saldo_atual", flat=True)
+        .first()
+        or ZERO_MONEY
+    )
+    if saldo_atual < valor:
+        raise ValidationError({
+            "conta_financeira": (
+                f"Saldo insuficiente na conta financeira. "
+                f"Disponível: R$ {saldo_atual:.2f}. "
+                f"Necessário: R$ {valor:.2f}."
+            )
+        })
+
     before = conta_pagar_snapshot(conta)
     criar_lancamento_financeiro(
         user=user,
-        conta_financeira=data["conta_financeira"],
+        conta_financeira=conta_financeira,
         categoria=conta.categoria,
         tipo=LancamentoFinanceiro.TIPO_SAIDA,
         valor=valor,

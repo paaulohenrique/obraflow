@@ -517,12 +517,16 @@ class DevolucaoEstoqueSerializer(_MovimentacaoBaseSerializer):
         max_digits=14,
         decimal_places=3,
         min_value=Decimal("0.001"),
+        required=False,
     )
     motivo = serializers.CharField(max_length=255)
 
     def validate(self, attrs):
+        attrs = super().validate(attrs)  # aplica conversão via forma_venda se fornecida
         attrs.pop("fornecedor", None)
         attrs.pop("custo_unitario", None)
+        if not attrs.get("quantidade") and not (attrs.get("forma_venda") and attrs.get("quantidade_informada")):
+            raise ValidationError({"quantidade": "Informe quantidade ou forma_venda + quantidade_informada."})
         return attrs
 
 

@@ -3,6 +3,7 @@ x-backend-common: &backend-common
     context: .
     target: dev
   env_file: .env
+  restart: unless-stopped
   volumes:
     - .:/app
     - backend_logs:/app/logs
@@ -23,6 +24,12 @@ services:
       - "8000:8000"
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/')\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   # ─── Celery workers ──────────────────────────────────────────────────────────
   celery:
@@ -35,6 +42,12 @@ services:
         -Q default,cobrancas,notificacoes,fiscal,relatorios
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.dev
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config.celery inspect ping -d celery@$$HOSTNAME || exit 1"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
 
   celery-beat:
     <<: *backend-common
@@ -50,6 +63,7 @@ services:
   db:
     image: postgres:16-alpine
     container_name: obraflow_db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: obraflow
       POSTGRES_USER: obraflow
@@ -69,6 +83,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: obraflow_redis
+    restart: unless-stopped
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data

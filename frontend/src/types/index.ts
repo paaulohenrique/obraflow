@@ -367,6 +367,9 @@ export interface ContaFiado {
   cliente: string
   cliente_nome: string
   cliente_cpf_cnpj: string
+  cliente_limite_credito: ApiDecimal
+  cliente_saldo_devedor: ApiDecimal
+  cliente_credito_disponivel: ApiDecimal
   status: StatusContaFiado
   valor_total: ApiDecimal
   valor_pago: ApiDecimal
@@ -607,6 +610,7 @@ export interface DashboardFinanceiro {
   total_contas_pagar_abertas: ApiDecimal
   total_contas_pagar_vencidas: ApiDecimal
   saldo_caixa: ApiDecimal
+  saldo_bancario: ApiDecimal
   saldo_total_financeiro: ApiDecimal
   inadimplencia_valor_cobrado: ApiDecimal
   inadimplencia_valor_recuperado: ApiDecimal

@@ -174,6 +174,17 @@ class ItemVenda(BaseModel):
         null=True,
         blank=True,
     )
+    # Snapshot do custo médio no momento da venda — nunca usar produto.custo_medio para relatórios
+    custo_unitario_historico = models.DecimalField(
+        max_digits=14, decimal_places=2,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
+    )
+    custo_total_historico = models.DecimalField(
+        max_digits=14, decimal_places=2,
+        default=ZERO_MONEY,
+        validators=[MinValueValidator(ZERO_MONEY)],
+    )
 
     class Meta(BaseModel.Meta):
         verbose_name = "Item de Venda"

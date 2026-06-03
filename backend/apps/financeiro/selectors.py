@@ -269,6 +269,13 @@ def get_dashboard_financeiro(*, company_id: Any) -> dict[str, Any]:
             ),
             field="saldo_atual",
         ),
+        "saldo_bancario": _sum_money(
+            get_contas_financeiras(company_id=company_id).filter(
+                tipo=ContaFinanceira.TIPO_BANCO,
+                ativo=True,
+            ),
+            field="saldo_atual",
+        ),
         "saldo_total_financeiro": _sum_money(
             get_contas_financeiras(company_id=company_id).filter(ativo=True),
             field="saldo_atual",

@@ -23,7 +23,7 @@ const itemSchema = z.object({
   produto: z.string().min(1, "Selecione o produto."),
   forma_venda: z.string().min(1, "Selecione a forma de venda."),
   quantidade: z.number().min(0.001, "Informe uma quantidade maior que zero."),
-  preco_unitario: z.number().min(0, "Informe um preço válido."),
+  preco_unitario: z.number().min(0.01, "Preço deve ser maior que zero."),
   observacao: z.string().optional(),
 })
 

@@ -127,7 +127,7 @@ export default function CobrancasPage() {
         idempotency_key: createIdempotencyKey("cobranca-individual"),
       }),
     onSuccess: () => {
-      toast.success("Cobrança enviada para a fila do WhatsApp.")
+      toast.success("Mensagem enfileirada. O status atualiza automaticamente.")
       setPreview(null)
       setPreviewConta(null)
       queryClient.invalidateQueries({ queryKey: ["cobrancas"] })
@@ -145,7 +145,7 @@ export default function CobrancasPage() {
         idempotency_key: createIdempotencyKey(`cobranca-lote-${criterioLote}`),
       }),
     onSuccess: (data) => {
-      toast.success(`${data.quantidade} cobranças enviadas para a fila.`)
+      toast.success(`${data.quantidade} ${data.quantidade === 1 ? "mensagem enfileirada" : "mensagens enfileiradas"}. Status atualiza automaticamente.`)
       setSelectedIds(new Set())
       queryClient.invalidateQueries({ queryKey: ["cobrancas"] })
       queryClient.invalidateQueries({ queryKey: ["fiado"] })

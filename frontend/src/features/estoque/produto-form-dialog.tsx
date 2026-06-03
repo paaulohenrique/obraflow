@@ -169,6 +169,7 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
   const [categoriaSubmitted, setCategoriaSubmitted] = useState(false)
   const [unidadeSubmitted, setUnidadeSubmitted] = useState(false)
   const [embalagemPreset, setEmbalagemPreset] = useState<EmbalagemPreset | null>(null)
+  const [fiscalAberto, setFiscalAberto] = useState(false)
   const isEditing = Boolean(produto)
   const nextFormKey = open ? `${produto?.id ?? "novo"}:${produto?.updated_at ?? ""}` : "closed"
 
@@ -183,6 +184,7 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
     setCategoriaSubmitted(false)
     setUnidadeSubmitted(false)
     setEmbalagemPreset(null)
+    setFiscalAberto(false)
   }
 
   const categoriasQuery = useQuery({
@@ -730,13 +732,20 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                 />
               </Field>
 
-              <div className="space-y-4 rounded-md border border-yellow-200 bg-yellow-50/50 p-3 md:col-span-2">
-                <div>
-                  <p className="text-xs font-bold text-zinc-800">Dados fiscais</p>
-                  <p className="text-[11px] text-zinc-600">
-                    Estes dados serão usados futuramente para emissão de NF-e. Confirme as regras fiscais com seu contador.
-                  </p>
-                </div>
+              <div className="rounded-md border border-yellow-200 bg-yellow-50/50 md:col-span-2">
+                <button
+                  type="button"
+                  onClick={() => setFiscalAberto((v) => !v)}
+                  className="flex w-full items-center justify-between px-3 py-2.5 text-left"
+                >
+                  <div>
+                    <p className="text-xs font-bold text-zinc-800">Dados fiscais</p>
+                    <p className="text-[11px] text-zinc-500">NCM, CFOP, alíquotas — necessário para NF-e</p>
+                  </div>
+                  <span className="text-xs text-zinc-500">{fiscalAberto ? "▲ Fechar" : "▼ Expandir"}</span>
+                </button>
+                {fiscalAberto && (
+                <div className="space-y-4 border-t border-yellow-200 p-3">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                   <Field label="NCM" error={showError("ncm")}>
                     <Input
@@ -825,6 +834,8 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                     <Input type="number" min="0" step="0.0001" value={form.aliquota_cofins} onChange={(event) => updateField("aliquota_cofins", event.target.value)} disabled={isWorking} />
                   </Field>
                 </div>
+                </div>
+                )}
               </div>
 
               <div className="md:col-span-2">

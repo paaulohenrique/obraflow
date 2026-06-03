@@ -48,11 +48,17 @@ def _date_param(value: Any) -> date | None:
     return None
 
 
-def _period(filters: dict[str, Any] | None) -> tuple[date | None, date | None]:
+def _period(filters: dict[str, Any] | None) -> tuple[date, date]:
+    """Retorna (start, end). Padrão: mês atual (1º dia até hoje)."""
     filters = filters or {}
     start = _date_param(filters.get("data_inicio") or filters.get("periodo_inicio"))
     end = _date_param(filters.get("data_fim") or filters.get("periodo_fim"))
-    if start and end and start > end:
+    hoje = date.today()
+    if not start:
+        start = hoje.replace(day=1)
+    if not end:
+        end = hoje
+    if start > end:
         start, end = end, start
     return start, end
 
@@ -158,11 +164,9 @@ def _movimentacoes_base(company_id: Any) -> QuerySet:
 def _lucro_bruto_estimado(company_id: Any, start: date | None, end: date | None) -> Decimal:
     itens = _itens_venda_base(company_id).filter(venda__status=Venda.STATUS_CONCLUIDA)
     itens = _filter_datetime_period(itens, "venda__created_at", start, end)
-    custo_expr = ExpressionWrapper(
-        F("quantidade") * F("produto__custo_medio"),
-        output_field=DecimalField(max_digits=18, decimal_places=2),
-    )
-    totais = itens.aggregate(receita=Sum("subtotal"), custo=Sum(custo_expr))
+    # Usa custo_total_historico (snapshot imutável do momento da venda).
+    # Registros anteriores à migração têm custo_total_historico=0 e são excluídos do custo.
+    totais = itens.aggregate(receita=Sum("subtotal"), custo=Sum("custo_total_historico"))
     return money((totais["receita"] or ZERO_MONEY) - (totais["custo"] or ZERO_MONEY))
 
 
@@ -527,7 +531,11 @@ def get_relatorio_estoque(*, company_id: Any, filters: dict[str, Any] | None = N
         item["produto_id"]: item["ultima_venda"] for item in ultimas_vendas
     }
     top_parados = []
-    for produto in produtos_sem_movimentacao.order_by("-estoque_atual", "nome")[:10]:
+    for produto in (
+        produtos_sem_movimentacao
+        .only("id", "nome", "estoque_atual", "custo_medio")
+        .order_by("-estoque_atual", "nome")[:10]
+    ):
         ultima = ultima_venda_por_produto.get(produto.pk)
         top_parados.append(
             {

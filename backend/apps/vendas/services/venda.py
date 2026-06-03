@@ -53,13 +53,16 @@ def _get_or_create_categoria_vendas(*, company) -> CategoriaFinanceira:
 
 def _locked_produto(*, produto_id, company_id) -> Produto:
     try:
-        return Produto.objects.get(
+        produto = Produto.objects.get(
             pk=produto_id,
             company_id=company_id,
             deleted_at__isnull=True,
         )
     except Produto.DoesNotExist:
         raise NotFound(f"Produto {produto_id} não encontrado.")
+    if not produto.is_active:
+        raise ValidationError({"produto": f"Produto '{produto.nome}' está inativo e não pode ser vendido."})
+    return produto
 
 
 def _get_forma_venda(*, forma_venda_id, produto: Produto, company_id) -> FormaVendaProduto | None:
@@ -102,6 +105,14 @@ def criar_venda(*, user, data: dict[str, Any], request=None) -> Venda:
         raise ValidationError({"conta_financeira": "Conta financeira não pertence à empresa."})
     if not conta_financeira.ativo:
         raise ValidationError({"conta_financeira": "Conta financeira inativa."})
+
+    # Pré-validação do desconto antes de qualquer movimentação de estoque
+    subtotal_estimado = sum(
+        money(Decimal(str(item.get("quantidade_informada", "0"))) * money(Decimal(str(item.get("preco_unitario", "0")))))
+        for item in itens_data
+    )
+    if subtotal_estimado - desconto <= ZERO_MONEY:
+        raise ValidationError({"desconto": "Desconto não pode exceder o subtotal da venda."})
 
     # Criar venda provisória para gerar numero a partir do pk
     venda = Venda(
@@ -158,6 +169,10 @@ def criar_venda(*, user, data: dict[str, Any], request=None) -> Venda:
             request=request,
         )
 
+        # Snapshot de custo no momento da venda — imutável para relatórios históricos
+        custo_unitario_historico = money(produto.custo_medio or ZERO_MONEY)
+        custo_total_historico = money(quantidade * custo_unitario_historico)
+
         item = ItemVenda(
             company=user.company,
             venda=venda,
@@ -168,6 +183,8 @@ def criar_venda(*, user, data: dict[str, Any], request=None) -> Venda:
             preco_unitario=preco_unitario,
             subtotal=subtotal_item,
             movimentacao_estoque=mov,
+            custo_unitario_historico=custo_unitario_historico,
+            custo_total_historico=custo_total_historico,
         )
         _full_clean_or_400(item)
         item.save()

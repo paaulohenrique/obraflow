@@ -330,9 +330,27 @@ export default function FiadoDetalhePage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <CreditCard className="size-3.5 text-zinc-400" />
-                    <span>Vencimento da fatura: {conta.data_vencimento ? formatDate(conta.data_vencimento) : "Imediato"}</span>
+                    <span>Vencimento: {conta.data_vencimento ? formatDate(conta.data_vencimento) : "Sem prazo definido"}</span>
                   </div>
                 </div>
+                {toNumber(conta.cliente_limite_credito) > 0 && (
+                  <div className="rounded-md border border-zinc-100 bg-zinc-50 px-3 py-2 text-xs space-y-1.5">
+                    <div className="flex justify-between font-medium text-zinc-600">
+                      <span>Limite do cliente</span>
+                      <span className="tabular-nums text-zinc-900">{formatCurrency(conta.cliente_limite_credito)}</span>
+                    </div>
+                    <div className="flex justify-between text-zinc-500">
+                      <span>Utilizado (total)</span>
+                      <span className="tabular-nums">{formatCurrency(conta.cliente_saldo_devedor)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold">
+                      <span className="text-zinc-600">Disponível</span>
+                      <span className={`tabular-nums ${toNumber(conta.cliente_credito_disponivel) <= 0 ? "text-red-600" : "text-green-600"}`}>
+                        {formatCurrency(conta.cliente_credito_disponivel)}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="pt-2">
                 <Badge variant={status.variant} className="font-bold">{status.label.toUpperCase()}</Badge>

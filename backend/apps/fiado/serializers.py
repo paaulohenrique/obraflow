@@ -41,6 +41,15 @@ class ContaFiadoListSerializer(BaseModelSerializer):
     company_id = serializers.UUIDField(read_only=True)
     cliente_nome = serializers.CharField(source="cliente.nome", read_only=True)
     cliente_cpf_cnpj = serializers.CharField(source="cliente.cpf_cnpj", read_only=True)
+    cliente_limite_credito = serializers.DecimalField(
+        source="cliente.limite_credito", max_digits=14, decimal_places=2, read_only=True
+    )
+    cliente_saldo_devedor = serializers.DecimalField(
+        source="cliente.saldo_devedor", max_digits=14, decimal_places=2, read_only=True
+    )
+    cliente_credito_disponivel = serializers.DecimalField(
+        source="cliente.credito_disponivel", max_digits=14, decimal_places=2, read_only=True
+    )
     created_by_nome = serializers.CharField(source="created_by.name", read_only=True)
     is_parcial = serializers.BooleanField(read_only=True)
     is_atrasada = serializers.BooleanField(read_only=True)
@@ -54,6 +63,9 @@ class ContaFiadoListSerializer(BaseModelSerializer):
             "cliente",
             "cliente_nome",
             "cliente_cpf_cnpj",
+            "cliente_limite_credito",
+            "cliente_saldo_devedor",
+            "cliente_credito_disponivel",
             "status",
             "valor_total",
             "valor_pago",
@@ -190,7 +202,7 @@ class ItemFiadoCreateSerializer(TenantScopedSerializerMixin, serializers.Seriali
     preco_unitario = serializers.DecimalField(
         max_digits=12,
         decimal_places=2,
-        min_value=Decimal("0.00"),
+        min_value=Decimal("0.01"),
         required=False,
         allow_null=True,
     )

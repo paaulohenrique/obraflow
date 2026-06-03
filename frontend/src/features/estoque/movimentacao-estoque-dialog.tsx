@@ -203,7 +203,9 @@ export function MovimentacaoEstoqueDialog({
 
       return movimentacoesEstoqueService.devolucao({
         ...basePayload,
-        quantidade: normalizeDecimal(form.quantidade),
+        ...(usaForma
+          ? { forma_venda: form.forma_venda, quantidade_informada: normalizeDecimal(form.quantidade) }
+          : { quantidade: normalizeDecimal(form.quantidade) }),
       })
     },
     onSuccess: () => {
@@ -219,7 +221,7 @@ export function MovimentacaoEstoqueDialog({
   }
 
   const showError = (key: string) => submitted && validation[key]
-  const showForma = form.tipo === "ENTRADA" || form.tipo === "SAIDA"
+  const showForma = form.tipo === "ENTRADA" || form.tipo === "SAIDA" || form.tipo === "DEVOLUCAO"
   const showCusto = form.tipo === "ENTRADA" || form.tipo === "AJUSTE"
 
   return (

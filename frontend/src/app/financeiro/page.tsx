@@ -203,9 +203,20 @@ export default function FinanceiroPage() {
             accent={Number(dash?.total_contas_pagar_vencidas) > 0}
           />
           <StatCard
-            label="Saldo em Caixa"
+            label="Saldo Caixa"
             value={formatCurrency(dash?.saldo_caixa)}
             icon={<Landmark className="size-4" />}
+          />
+          <StatCard
+            label="Saldo Bancário"
+            value={formatCurrency(dash?.saldo_bancario)}
+            icon={<Landmark className="size-4" />}
+          />
+          <StatCard
+            label="Saldo Total"
+            value={formatCurrency(dash?.saldo_total_financeiro)}
+            icon={<Landmark className="size-4" />}
+            accent
           />
           <StatCard
             label="Recuperação"
