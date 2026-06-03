@@ -53,7 +53,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             ? <CheckCircle2 className="size-4 text-green-500" />
             : m.type === "error"
             ? <AlertCircle className="size-4 text-red-500" />
-            : <Info className="size-4 text-blue-500" />
+            : <Info className="size-4 text-orange-500" />
             
           return (
             <Toast.Root

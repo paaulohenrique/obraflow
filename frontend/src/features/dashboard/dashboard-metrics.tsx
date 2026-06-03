@@ -3,12 +3,12 @@
 import { StatCard } from "@/components/ui/stat-card"
 import { formatCurrency } from "@/lib/utils"
 import { toNumber } from "@/lib/format"
-import { AlertTriangle, Clock, DollarSign, HandCoins, Package, Users, Wallet } from "lucide-react"
+import { AlertTriangle, Banknote, HandCoins, Package, ReceiptText, ShoppingBag, Users } from "lucide-react"
 import { ErrorState } from "@/components/ui/error-state"
-import { useDashboardResumo } from "./use-dashboard-resumo"
+import { useDashboardExecutivo } from "./use-dashboard-executivo"
 
 export function DashboardMetrics() {
-  const { data, isLoading, isError, refetch } = useDashboardResumo()
+  const { data, isLoading, isError, refetch } = useDashboardExecutivo()
 
   if (isError) {
     return (
@@ -20,53 +20,75 @@ export function DashboardMetrics() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        {Array.from({ length: 10 }).map((_, index) => (
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {Array.from({ length: 8 }).map((_, index) => (
           <StatCard key={index} label="" value="" loading />
         ))}
       </div>
     )
   }
 
-  const financeiro = data?.financeiro
-  const fiado = data?.fiado
-
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-400">Painel do Dono</p>
+          <h2 className="mt-1 text-lg font-semibold text-zinc-950">Indicadores que pedem decisão</h2>
+        </div>
+        <p className="text-xs text-zinc-500">
+          Atualizado com dados operacionais reais
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <StatCard
-        label="Recebido Hoje"
-        value={formatCurrency(financeiro?.recebido_hoje)}
-        icon={<Wallet className="size-4" />}
+        label="Faturamento do mês"
+        value={formatCurrency(data?.vendas_mes)}
+        context="Vendas concluídas no mês corrente."
+        icon={<ShoppingBag className="size-4" />}
       />
       <StatCard
-        label="Fiado em Aberto"
-        value={formatCurrency(fiado?.total_em_aberto)}
-        accent={toNumber(fiado?.total_em_aberto) > 0}
+        label="Recebimentos"
+        value={formatCurrency(data?.a_receber)}
+        context="Fiado em aberto e valores ainda a receber."
+        accent={toNumber(data?.a_receber) > 0}
+        icon={<Banknote className="size-4" />}
+      />
+      <StatCard
+        label="Contas a pagar"
+        value={formatCurrency(data?.a_pagar)}
+        context="Compromissos financeiros abertos."
+        accent={toNumber(data?.a_pagar) > 0}
+        icon={<ReceiptText className="size-4" />}
+      />
+      <StatCard
+        label="Fiado em aberto"
+        value={formatCurrency(data?.fiado_em_aberto)}
+        context="Crédito concedido ainda não quitado."
+        accent={toNumber(data?.fiado_em_aberto) > 0}
         icon={<HandCoins className="size-4" />}
       />
       <StatCard
-        label="Inadimplentes"
-        value={String(data?.clientesInadimplentes.count ?? 0)}
-        accent={(data?.clientesInadimplentes.count ?? 0) > 0}
-        icon={<Users className="size-4" />}
-      />
-      <StatCard
-        label="Contas Vencidas"
-        value={formatCurrency(financeiro?.total_contas_pagar_vencidas)}
-        accent={toNumber(financeiro?.total_contas_pagar_vencidas) > 0}
+        label="Fiado vencido"
+        value={formatCurrency(data?.fiado_vencido)}
+        context="Valor atrasado que exige cobrança."
+        accent={toNumber(data?.fiado_vencido) > 0}
         icon={<AlertTriangle className="size-4" />}
       />
       <StatCard
-        label="Estoque Crítico"
-        value={`${data?.produtosCriticos.count ?? 0} SKUs`}
-        accent={toNumber(data?.produtosCriticos.count ?? 0) > 0}
-        icon={<Package className="size-4" />}
+        label="Clientes inadimplentes"
+        value={String(data?.clientes_inadimplentes ?? 0)}
+        context="Clientes com atraso no crédito."
+        accent={(data?.clientes_inadimplentes ?? 0) > 0}
+        icon={<Users className="size-4" />}
       />
       <StatCard
-        label="Recebido no Mês"
-        value={formatCurrency(financeiro?.recebido_mes)}
-        icon={<DollarSign className="size-4" />}
+        label="Estoque crítico"
+        value={`${data?.produtos_estoque_critico ?? 0} SKUs`}
+        context="Itens abaixo do mínimo definido."
+        accent={(data?.produtos_estoque_critico ?? 0) > 0}
+        icon={<Package className="size-4" />}
       />
+      </div>
     </div>
   )
 }

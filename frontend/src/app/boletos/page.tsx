@@ -76,7 +76,7 @@ export default function BoletosPage() {
         }
       />
 
-      <main className="flex-1 space-y-6 p-6">
+      <main className="flex-1 space-y-6 p-4 md:p-6">
         {/* KPI Cards Widget */}
         <BoletosDashboardCards
           data={dashboardQuery.data}
@@ -123,7 +123,7 @@ export default function BoletosPage() {
           <div className="flex items-center gap-2 self-end md:self-auto">
             <button
               onClick={handleRefresh}
-              className="flex items-center justify-center p-2 text-zinc-450 hover:text-zinc-700 border border-zinc-200 rounded-lg bg-zinc-50 hover:bg-zinc-100 transition-colors cursor-pointer"
+              className="flex items-center justify-center p-2 text-zinc-500 hover:text-zinc-700 border border-zinc-200 rounded-lg bg-zinc-50 hover:bg-zinc-100 transition-colors cursor-pointer"
               title="Atualizar dados"
             >
               <RefreshCw className="size-4" />

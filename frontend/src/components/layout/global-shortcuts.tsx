@@ -55,6 +55,24 @@ export function GlobalShortcuts() {
       if (event.key === "F4") {
         event.preventDefault()
         router.push("/fiado")
+        return
+      }
+
+      if (event.key === "F5") {
+        event.preventDefault()
+        router.push("/pdv")
+        return
+      }
+
+      if (event.key === "F6") {
+        event.preventDefault()
+        router.push("/financeiro")
+        return
+      }
+
+      if (event.key === "F7") {
+        event.preventDefault()
+        router.push("/relatorios")
       }
     }
 

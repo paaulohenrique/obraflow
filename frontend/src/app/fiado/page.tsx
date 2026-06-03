@@ -51,8 +51,8 @@ export default function FiadoPage() {
     <Shell>
       <Topbar title="Fiado" subtitle="Contas, pagamentos e histórico de crédito" />
 
-      <main className="flex-1 space-y-5 p-6">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <main className="flex-1 space-y-5 p-4 md:p-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Total em Aberto" value={formatCurrency(dashboardQuery.data?.total_em_aberto)} accent />
           <StatCard label="Atrasado" value={formatCurrency(dashboardQuery.data?.total_atrasado)} />
           <StatCard label="Recebido no Mês" value={formatCurrency(dashboardQuery.data?.total_recebido_mes)} />

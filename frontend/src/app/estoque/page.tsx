@@ -102,8 +102,8 @@ export default function EstoquePage() {
         }
       />
 
-      <main className="flex-1 space-y-5 p-6">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <main className="flex-1 space-y-5 p-4 md:p-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="SKUs Encontrados" value={`${total} ${total === 1 ? "produto" : "produtos"}`} icon={<Package className="size-4" />} />
           <StatCard
             label="Estoque Baixo"
@@ -193,7 +193,12 @@ export default function EstoquePage() {
           {produtosQuery.isError ? (
             <ErrorState onRetry={() => produtosQuery.refetch()} />
           ) : (
-            <EstoqueTable produtos={produtos} formasByProduto={formasByProduto} loading={produtosQuery.isLoading} />
+            <EstoqueTable
+              produtos={produtos}
+              formasByProduto={formasByProduto}
+              loading={produtosQuery.isLoading}
+              onCreateClick={() => setProdutoDialogOpen(true)}
+            />
           )}
 
           <div className="flex items-center justify-between border-t border-zinc-100 bg-zinc-50/50 px-5 py-3">

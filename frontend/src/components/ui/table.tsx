@@ -2,8 +2,8 @@ import { cn } from "@/lib/utils"
 
 export function Table({ className, children, ...props }: React.HTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="overflow-x-auto">
-      <table className={cn("w-full text-sm", className)} {...props}>
+    <div className="relative overflow-x-auto">
+      <table className={cn("w-full min-w-max border-separate border-spacing-0 text-sm", className)} {...props}>
         {children}
       </table>
     </div>
@@ -12,7 +12,7 @@ export function Table({ className, children, ...props }: React.HTMLAttributes<HT
 
 export function Thead({ className, children, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
-    <thead className={cn("bg-zinc-50 border-b border-zinc-200", className)} {...props}>
+    <thead className={cn("sticky top-0 z-10 border-b border-zinc-200 bg-zinc-50/95 backdrop-blur", className)} {...props}>
       {children}
     </thead>
   )
@@ -22,7 +22,7 @@ export function Th({ className, children, ...props }: React.ThHTMLAttributes<HTM
   return (
     <th
       className={cn(
-        "h-10 px-4 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide whitespace-nowrap",
+        "h-10 border-b border-zinc-200 px-4 text-left text-[11px] font-semibold uppercase tracking-wide text-zinc-500 whitespace-nowrap",
         className
       )}
       {...props}
@@ -35,7 +35,7 @@ export function Th({ className, children, ...props }: React.ThHTMLAttributes<HTM
 export function Tbody({ className, children, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
     <tbody
-      className={cn("divide-y divide-zinc-100 bg-white", className)}
+      className={cn("bg-white", className)}
       {...props}
     >
       {children}
@@ -52,8 +52,8 @@ export function Tr({
   return (
     <tr
       className={cn(
-        "transition-colors duration-100",
-        clickable && "cursor-pointer hover:bg-zinc-50/80",
+        "group transition-colors duration-150",
+        clickable && "cursor-pointer hover:bg-orange-50/35",
         className
       )}
       {...props}
@@ -65,7 +65,7 @@ export function Tr({
 
 export function Td({ className, children, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return (
-    <td className={cn("px-4 py-3 text-zinc-700 whitespace-nowrap", className)} {...props}>
+    <td className={cn("border-b border-zinc-100 px-4 py-3 text-zinc-700 whitespace-nowrap", className)} {...props}>
       {children}
     </td>
   )

@@ -231,6 +231,12 @@ export interface UnidadeMedida {
   updated_at: string
 }
 
+export interface UnidadeMedidaPayload {
+  nome: string
+  sigla: string
+  descricao?: string
+}
+
 export interface CategoriaProduto {
   id: string
   company_id: string
@@ -239,6 +245,11 @@ export interface CategoriaProduto {
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export interface CategoriaProdutoPayload {
+  nome: string
+  descricao?: string
 }
 
 export interface FormaVendaProduto {
@@ -506,6 +517,186 @@ export interface DashboardResumo {
   notasPendentes?: PaginatedResponse<NotaEntrada>
 }
 
+export interface DashboardExecutivo {
+  caixa_atual: ApiDecimal
+  caixa_entradas: ApiDecimal
+  caixa_saidas: ApiDecimal
+  a_receber: ApiDecimal
+  fiados_em_aberto_componente: ApiDecimal
+  recebimentos_pendentes: ApiDecimal
+  a_pagar: ApiDecimal
+  contas_abertas: ApiDecimal
+  boletos_confirmados: ApiDecimal
+  fiado_em_aberto: ApiDecimal
+  fiado_vencido: ApiDecimal
+  vendas_mes: ApiDecimal
+  clientes_inadimplentes: number
+  produtos_estoque_critico: number
+  atualizado_em: string
+}
+
+export interface ReportPeriodo {
+  data_inicio: string | null
+  data_fim: string | null
+}
+
+export interface RelatorioFiadoResultado {
+  id: string
+  cliente_id: string
+  cliente: string
+  status: StatusContaFiado
+  valor_total: ApiDecimal
+  valor_pago: ApiDecimal
+  valor_restante: ApiDecimal
+  data_abertura: string
+  data_vencimento: string | null
+  dias_atraso: number
+}
+
+export interface RelatorioFiadoRanking {
+  cliente_id: string
+  cliente: string
+  saldo: ApiDecimal
+  dias_em_atraso: number
+}
+
+export interface RelatorioFiado {
+  periodo: ReportPeriodo
+  kpis: {
+    total_em_aberto: ApiDecimal
+    total_vencido: ApiDecimal
+    recebido_no_mes: ApiDecimal
+    clientes_inadimplentes: number
+  }
+  ranking_maiores_devedores: RelatorioFiadoRanking[]
+  resultados: PaginatedResponse<RelatorioFiadoResultado>
+}
+
+export interface RelatorioVendasRankingProduto {
+  produto_id: string
+  produto: string
+  quantidade: ApiDecimal
+  valor_vendido: ApiDecimal
+}
+
+export interface RelatorioVendasRankingCategoria {
+  categoria_id: string
+  categoria: string | null
+  quantidade: ApiDecimal
+  valor_vendido: ApiDecimal
+}
+
+export interface RelatorioVendasDia {
+  data: string
+  total: ApiDecimal
+  quantidade: number
+}
+
+export interface RelatorioVendaResultado {
+  id: string
+  numero: string
+  cliente: string
+  valor_total: ApiDecimal
+  desconto: ApiDecimal
+  forma_pagamento: FormaPagamentoPDV
+  created_at: string
+}
+
+export interface RelatorioVendas {
+  periodo: ReportPeriodo
+  kpis: {
+    vendas_hoje: ApiDecimal
+    vendas_mes: ApiDecimal
+    ticket_medio: ApiDecimal
+    quantidade_vendas: number
+  }
+  produtos_mais_vendidos: RelatorioVendasRankingProduto[]
+  categorias_mais_vendidas: RelatorioVendasRankingCategoria[]
+  vendas_por_dia: RelatorioVendasDia[]
+  resultados: PaginatedResponse<RelatorioVendaResultado>
+}
+
+export interface RelatorioFinanceiroFluxo {
+  data: string
+  entradas: ApiDecimal
+  saidas: ApiDecimal
+  saldo: ApiDecimal
+}
+
+export interface RelatorioFinanceiroContaResumo {
+  quantidade: number
+  total: ApiDecimal
+}
+
+export interface RelatorioFinanceiroResultado {
+  id: string
+  descricao: string
+  fornecedor: string
+  status: ContaPagar["status"]
+  valor_total: ApiDecimal
+  valor_pago: ApiDecimal
+  valor_restante: ApiDecimal
+  data_vencimento: string
+  dias_atraso: number
+}
+
+export interface RelatorioFinanceiro {
+  periodo: ReportPeriodo
+  kpis: {
+    entradas: ApiDecimal
+    saidas: ApiDecimal
+    saldo: ApiDecimal
+    lucro_bruto_estimado: ApiDecimal
+  }
+  fluxo: RelatorioFinanceiroFluxo[]
+  contas: {
+    a_vencer: RelatorioFinanceiroContaResumo
+    vencidas: RelatorioFinanceiroContaResumo
+    pagas: RelatorioFinanceiroContaResumo
+  }
+  resultados: PaginatedResponse<RelatorioFinanceiroResultado>
+}
+
+export interface RelatorioEstoqueRankingVendido {
+  produto_id: string
+  produto: string
+  quantidade: ApiDecimal
+  valor_vendido: ApiDecimal
+}
+
+export interface RelatorioEstoqueRankingParado {
+  produto_id: string
+  produto: string
+  estoque_atual: ApiDecimal
+  valor_estoque: ApiDecimal
+  ultima_venda: string | null
+}
+
+export interface RelatorioEstoqueResultado {
+  id: string
+  nome: string
+  sku: string
+  categoria: string
+  estoque_atual: ApiDecimal
+  estoque_minimo: ApiDecimal
+  custo_medio: ApiDecimal
+  valor_estoque: ApiDecimal
+  estoque_baixo: boolean
+}
+
+export interface RelatorioEstoque {
+  periodo: ReportPeriodo
+  kpis: {
+    valor_estimado_estoque: ApiDecimal
+    produtos_criticos: number
+    produtos_sem_movimentacao: number
+    produtos_com_maior_giro: number
+  }
+  top_produtos_vendidos: RelatorioEstoqueRankingVendido[]
+  top_produtos_parados: RelatorioEstoqueRankingParado[]
+  resultados: PaginatedResponse<RelatorioEstoqueResultado>
+}
+
 export interface Fornecedor {
   id: string
   company_id: string
@@ -525,9 +716,95 @@ export interface CategoriaFinanceira {
   company_id: string
   nome: string
   tipo: "RECEITA" | "DESPESA"
+  descricao?: string
+  ativa: boolean
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export type TipoContaFinanceira = "CAIXA" | "BANCO" | "CARTEIRA" | "OUTRO"
+
+export interface ContaFinanceira {
+  id: string
+  company_id: string
+  nome: string
+  tipo: TipoContaFinanceira
+  saldo_atual: ApiDecimal
+  ativo: boolean
+  observacao?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type TipoLancamento = "ENTRADA" | "SAIDA"
+export type StatusLancamento = "CONFIRMADO" | "CANCELADO"
+export type FormaPagamento = "DINHEIRO" | "PIX" | "CARTAO" | "BOLETO" | "TRANSFERENCIA" | "OUTRO"
+export type OrigemLancamento = "MANUAL" | "FIADO" | "CONTA_PAGAR" | "ESTORNO" | "AJUSTE"
+
+export interface LancamentoFinanceiro {
+  id: string
+  company_id: string
+  conta_financeira: string
+  conta_financeira_nome: string
+  categoria: string
+  categoria_nome: string
+  caixa_diario: string | null
+  tipo: TipoLancamento
+  valor: ApiDecimal
+  data_lancamento: string
+  descricao: string
+  origem_tipo: OrigemLancamento
+  origem_id: string | null
+  forma_pagamento: FormaPagamento
+  status: StatusLancamento
+  created_by: string | null
+  created_by_nome: string | null
+  estorno_de: string | null
+  idempotency_key: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface PagarContaPagarPayload {
+  conta_financeira: string
+  valor: ApiDecimal
+  forma_pagamento: FormaPagamento
+  data_pagamento?: string
+  descricao?: string
+  idempotency_key?: string
+}
+
+export interface CriarContaPagarPayload {
+  descricao: string
+  categoria: string
+  valor_total: ApiDecimal
+  data_vencimento: string
+  data_emissao?: string
+  fornecedor?: string | null
+  observacao?: string
+}
+
+export interface CriarLancamentoPayload {
+  conta_financeira: string
+  categoria: string
+  tipo: TipoLancamento
+  valor: ApiDecimal
+  forma_pagamento?: FormaPagamento
+  data_lancamento?: string
+  descricao?: string
+  idempotency_key?: string
+}
+
+export interface CancelarContaPagarPayload {
+  motivo: string
+}
+
+export interface CancelarLancamentoPayload {
+  motivo: string
+  idempotency_key?: string
 }
 
 export interface BoletoOCR {
@@ -706,6 +983,86 @@ export interface ProductSuggestion {
   estoque_atual: ApiDecimal
   preco_compra: ApiDecimal
   similarity: number | null
+}
+
+// ─── PDV / Vendas ─────────────────────────────────────────────────────────────
+
+export type FormaPagamentoPDV = "DINHEIRO" | "PIX" | "CARTAO" | "TRANSFERENCIA"
+export type StatusVenda = "CONCLUIDA" | "CANCELADA"
+
+export interface ItemVendaResponse {
+  id: string
+  produto: string
+  produto_nome: string
+  produto_sku: string
+  produto_unidade_sigla: string
+  forma_venda: string | null
+  forma_venda_nome: string | null
+  quantidade_informada: ApiDecimal
+  quantidade: ApiDecimal
+  preco_unitario: ApiDecimal
+  subtotal: ApiDecimal
+  created_at: string
+}
+
+export interface Venda {
+  id: string
+  numero: string
+  cliente: string | null
+  cliente_nome: string | null
+  status: StatusVenda
+  valor_subtotal: ApiDecimal
+  desconto: ApiDecimal
+  valor_total: ApiDecimal
+  forma_pagamento: FormaPagamentoPDV
+  conta_financeira: string
+  conta_financeira_nome: string
+  total_itens: number
+  itens?: ItemVendaResponse[]
+  observacao?: string
+  created_by: string | null
+  created_by_nome: string | null
+  cancelled_by?: string | null
+  cancelled_at?: string | null
+  motivo_cancelamento?: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ItemVendaPayload {
+  produto: string
+  forma_venda?: string | null
+  quantidade_informada: ApiDecimal
+  preco_unitario: ApiDecimal
+}
+
+export interface CriarVendaPayload {
+  itens: ItemVendaPayload[]
+  forma_pagamento: FormaPagamentoPDV
+  conta_financeira: string
+  cliente?: string | null
+  desconto?: ApiDecimal
+  observacao?: string
+}
+
+export interface DashboardVendas {
+  total_hoje: ApiDecimal
+  count_hoje: number
+  total_mes: ApiDecimal
+  count_mes: number
+  ticket_medio: ApiDecimal
+}
+
+// Item local no carrinho do PDV (estado client-side, não enviado à API)
+export interface CartItem {
+  cartId: string           // UUID local para controle da lista
+  produto: Produto
+  formaVenda: FormaVendaProduto | null
+  quantidadeInformada: number
+  quantidade: number       // convertida para unidade base
+  precoUnitario: number
+  subtotal: number
 }
 
 export interface NotaHistorico {

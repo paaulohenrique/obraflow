@@ -5,7 +5,8 @@ import { MessageCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
+import { SkeletonTable } from "@/components/ui/skeleton"
 import { StatCard } from "@/components/ui/stat-card"
 import { Shell } from "@/components/layout/shell"
 import { Topbar } from "@/components/layout/topbar"
@@ -33,8 +34,8 @@ export default function CobrancasPage() {
     <Shell>
       <Topbar title="Cobranças" subtitle="Clientes com saldo devedor" />
 
-      <main className="flex-1 space-y-5 p-6">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <main className="flex-1 space-y-5 p-4 md:p-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Clientes Devedores" value={`${clientesQuery.data?.count ?? 0}`} accent />
           <StatCard label="Saldo Pendente" value={formatCurrency(totalPendente)} />
           <StatCard label="Página Atual" value={`${clientes.length} clientes`} />
@@ -47,13 +48,13 @@ export default function CobrancasPage() {
           </CardHeader>
           <CardContent className="p-0">
             {clientesQuery.isLoading ? (
-              <div className="space-y-2 p-5">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <Skeleton key={index} className="h-12 w-full" />
-                ))}
-              </div>
+              <SkeletonTable rows={6} cols={4} />
             ) : clientes.length === 0 ? (
-              <div className="py-12 text-center text-sm text-zinc-400">Nenhum cliente devedor.</div>
+              <EmptyState
+                icon={<MessageCircle className="size-5" />}
+                title="Nenhum cliente devedor"
+                description="Quando houver saldo em aberto, os clientes aparecerão nesta fila para contato e acompanhamento."
+              />
             ) : (
               <div className="divide-y divide-zinc-100">
                 {clientes.map((cliente) => (

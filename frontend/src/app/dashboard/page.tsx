@@ -12,18 +12,15 @@ export default function DashboardPage() {
   return (
     <Shell>
       <Topbar
-        title="Dashboard"
-        subtitle="Painel de controle e monitoramento da operação"
+        title="Painel do Dono"
+        subtitle="Faturamento, crédito, financeiro e estoque em uma visão operacional"
       />
 
-      <main className="flex-1 p-6 space-y-6">
-        {/* Resumo Operacional (KPIs) */}
+      <main className="flex-1 space-y-6 p-4 md:p-6">
         <DashboardMetrics />
 
-        {/* O que precisa da sua atenção (Actionable lists) */}
         <AtencaoPanel />
 
-        {/* Gráfico de Caixa + Devedores Recentes */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="lg:col-span-2">
             <FluxoCaixaChart />

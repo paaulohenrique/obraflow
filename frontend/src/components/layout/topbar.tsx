@@ -19,24 +19,20 @@ export function Topbar({ title, subtitle, actions }: TopbarProps) {
   const role = user?.role || "operador"
 
   return (
-    <header className="h-14 border-b border-zinc-200 bg-white flex items-center px-6 gap-4 sticky top-0 z-30">
-      {/* Título da página */}
-      <div className="flex-1 min-w-0">
+    <header className="sticky top-0 z-30 flex min-h-16 items-center gap-3 border-b border-zinc-200/80 bg-white/95 px-4 backdrop-blur md:px-6">
+      <div className="min-w-0 flex-1">
         {title && (
           <div>
-            <h1 className="text-base font-semibold text-zinc-900 leading-tight">{title}</h1>
-            {subtitle && <p className="text-xs text-zinc-500 leading-tight">{subtitle}</p>}
+            <h1 className="truncate text-base font-semibold leading-tight text-zinc-950">{title}</h1>
+            {subtitle && <p className="mt-0.5 truncate text-xs leading-tight text-zinc-500">{subtitle}</p>}
           </div>
         )}
       </div>
 
-      {/* Search global */}
       <button
         onClick={() => window.dispatchEvent(new Event("obraflow:open-command"))}
         className={cn(
-          "hidden md:flex items-center gap-2 h-8 px-3 rounded-md border border-zinc-200",
-          "bg-zinc-50 text-zinc-400 text-sm transition-colors hover:border-zinc-300",
-          "w-52 cursor-pointer"
+          "hidden h-8 w-56 cursor-pointer items-center gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-3 text-sm text-zinc-400 transition-colors hover:border-zinc-300 hover:bg-white md:flex"
         )}
       >
         <Search className="size-3.5 flex-shrink-0" />
@@ -47,8 +43,10 @@ export function Topbar({ title, subtitle, actions }: TopbarProps) {
       {/* Empresa atual */}
       <div className="hidden lg:flex items-center gap-1.5 h-8 px-3 rounded-md border border-zinc-200 text-xs font-medium text-zinc-700">
         <Building2 className="size-3.5 text-zinc-400" />
-        <span>{companyName}</span>
+        <span className="max-w-36 truncate">{companyName}</span>
       </div>
+
+      {actions && <div className="flex items-center gap-2">{actions}</div>}
 
       {user && (
         <div className="hidden min-w-0 items-center gap-2 border-l border-zinc-200 pl-3 md:flex">
@@ -65,14 +63,11 @@ export function Topbar({ title, subtitle, actions }: TopbarProps) {
       <button
         type="button"
         onClick={logout}
-        className="flex size-8 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900"
+        className="hidden size-8 items-center justify-center rounded-md border border-zinc-200 text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 md:flex"
         aria-label="Sair"
       >
         <LogOut className="size-4" />
       </button>
-
-      {/* Ações da página */}
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
     </header>
   )
 }

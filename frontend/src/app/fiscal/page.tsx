@@ -6,7 +6,8 @@ import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
+import { SkeletonTable } from "@/components/ui/skeleton"
 import { StatCard } from "@/components/ui/stat-card"
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table"
 import { Shell } from "@/components/layout/shell"
@@ -46,8 +47,8 @@ export default function FiscalPage() {
         }
       />
 
-      <main className="flex-1 space-y-5 p-6">
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <main className="flex-1 space-y-5 p-4 md:p-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Aguardando Revisão" value={`${dashboardQuery.data?.aguardando_revisao ?? 0}`} accent icon={<FileCode className="size-4" />} />
           <StatCard label="Confirmadas no Mês" value={`${dashboardQuery.data?.confirmadas_mes ?? 0}`} />
           <StatCard label="Itens sem Produto" value={`${dashboardQuery.data?.itens_sem_produto_pendentes ?? 0}`} />
@@ -64,13 +65,15 @@ export default function FiscalPage() {
           </CardHeader>
           <CardContent className="p-0">
             {notasQuery.isLoading ? (
-              <div className="space-y-2 p-5">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <Skeleton key={index} className="h-12 w-full" />
-                ))}
-              </div>
+              <SkeletonTable rows={6} cols={8} />
             ) : notas.length === 0 ? (
-              <div className="py-12 text-center text-sm text-zinc-400">Nenhuma nota de entrada encontrada.</div>
+              <EmptyState
+                icon={<FileCode className="size-5" />}
+                title="Nenhuma nota de entrada encontrada"
+                description="Importe o XML de compra para revisar itens, vincular produtos e lançar entradas no estoque."
+                actionLabel="Adicionar NF-e"
+                onAction={() => setUploadOpen(true)}
+              />
             ) : (
               <Table>
                 <Thead>
@@ -100,9 +103,9 @@ export default function FiscalPage() {
                       <Td className="font-mono text-xs font-semibold text-zinc-700">{nota.numero || "-"}</Td>
                       <Td className="font-medium text-zinc-900">{nota.fornecedor_nome_final || "-"}</Td>
                       <Td className="font-mono text-xs text-zinc-500">{nota.fornecedor_cnpj_xml ? formatDocument(nota.fornecedor_cnpj_xml) : "-"}</Td>
-                      <Td className="text-right tabular-nums font-semibold text-zinc-955">{formatCurrency(nota.valor_total)}</Td>
+                      <Td className="text-right tabular-nums font-semibold text-zinc-950">{formatCurrency(nota.valor_total)}</Td>
                       <Td className="text-xs text-zinc-500">{nota.data_emissao ? formatDate(nota.data_emissao) : "-"}</Td>
-                      <Td className="text-right tabular-nums text-xs text-zinc-650">
+                      <Td className="text-right tabular-nums text-xs text-zinc-700">
                         {nota.itens_total}
                         {nota.itens_sem_produto > 0 && <span className="ml-1 text-red-600 font-bold">({nota.itens_sem_produto})</span>}
                       </Td>

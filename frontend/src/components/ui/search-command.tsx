@@ -15,6 +15,8 @@ import {
   Landmark,
   FileText,
   Settings,
+  ShoppingCart,
+  BarChart3,
 } from "lucide-react"
 import { clientesService } from "@/services/clientes.service"
 import { estoqueService } from "@/services/estoque.service"
@@ -27,14 +29,26 @@ interface SearchCommandProps {
 }
 
 const navItems = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Painel do Dono", href: "/dashboard", icon: LayoutDashboard },
   { label: "Clientes", href: "/clientes", icon: Users },
+  { label: "PDV", href: "/pdv", icon: ShoppingCart },
   { label: "Fiado", href: "/fiado", icon: HandCoins },
   { label: "Estoque", href: "/estoque", icon: Package },
   { label: "Financeiro", href: "/financeiro", icon: Wallet },
   { label: "Boletos", href: "/boletos", icon: Landmark },
   { label: "Fiscal", href: "/fiscal", icon: FileText },
+  { label: "Relatórios", href: "/relatorios", icon: BarChart3 },
   { label: "Configurações", href: "/configuracoes", icon: Settings },
+]
+
+const shortcuts = [
+  { keys: "Ctrl K", label: "Abrir busca e comandos" },
+  { keys: "F2", label: "Produto ou busca contextual" },
+  { keys: "F3", label: "Clientes" },
+  { keys: "F4", label: "Fiado" },
+  { keys: "F5", label: "PDV" },
+  { keys: "F6", label: "Financeiro" },
+  { keys: "F7", label: "Relatórios" },
 ]
 
 export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
@@ -66,7 +80,7 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
       <DialogPortal>
         <DialogOverlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] transition-all duration-100 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
         <DialogContent
-          className="fixed left-1/2 top-[20%] z-50 w-full max-w-lg -translate-x-1/2 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-xl transition-all duration-100 focus:outline-none"
+          className="fixed left-1/2 top-[12%] z-50 w-[calc(100vw-24px)] max-w-2xl -translate-x-1/2 overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-xl transition-all duration-100 focus:outline-none"
           aria-describedby={undefined}
         >
           <DialogTitle className="sr-only">Busca e comandos</DialogTitle>
@@ -107,6 +121,25 @@ export function SearchCommand({ open, onOpenChange }: SearchCommandProps) {
                     <span>Ir para {label}</span>
                   </Command.Item>
                 ))}
+              </Command.Group>
+
+              <Command.Group
+                heading="Atalhos"
+                className="mt-1 px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-zinc-400"
+              >
+                <div className="grid grid-cols-1 gap-1 px-0.5 py-1 sm:grid-cols-2">
+                  {shortcuts.map((shortcut) => (
+                    <div
+                      key={shortcut.keys}
+                      className="flex items-center justify-between rounded-md border border-zinc-100 bg-zinc-50/70 px-2.5 py-2 text-xs"
+                    >
+                      <span className="font-medium text-zinc-600">{shortcut.label}</span>
+                      <kbd className="rounded border border-zinc-200 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-zinc-500 shadow-sm">
+                        {shortcut.keys}
+                      </kbd>
+                    </div>
+                  ))}
+                </div>
               </Command.Group>
 
               {clientesQuery.data?.results.length ? (

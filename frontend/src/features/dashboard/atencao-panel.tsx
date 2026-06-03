@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { AlertCircle, FileText, ArrowRight, Package, AlertTriangle, FileCode, Landmark, LandmarkIcon } from "lucide-react"
+import { AlertCircle, ArrowRight, Package, AlertTriangle, FileCode, Landmark } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -19,7 +19,7 @@ export function AtencaoPanel() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {Array.from({ length: 4 }).map((_, index) => (
           <Card key={index} className="border border-zinc-200">
-            <CardHeader className="h-10 bg-zinc-50 border-b border-zinc-150 animate-pulse" />
+            <CardHeader className="h-10 bg-zinc-50 border-b border-zinc-200 animate-pulse" />
             <CardContent className="p-4 space-y-3">
               <Skeleton className="h-10 w-full" />
               <Skeleton className="h-10 w-full" />
@@ -54,7 +54,7 @@ export function AtencaoPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-bold text-zinc-450 uppercase tracking-widest flex items-center gap-1.5">
+        <h2 className="text-xs font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
           <AlertCircle className="size-4 text-orange-500" /> O que precisa da sua atenção
         </h2>
         <Badge className="bg-orange-500/10 text-orange-600 border border-orange-500/20 font-bold text-[10px]">

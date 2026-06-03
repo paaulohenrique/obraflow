@@ -1,11 +1,12 @@
 "use client"
 
 import Link from "next/link"
-import { ChevronRight, Search } from "lucide-react"
+import { ChevronRight, Users } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
+import { SkeletonTable } from "@/components/ui/skeleton"
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table"
 import { formatCurrency, formatDocument, formatPhone, initials } from "@/lib/utils"
 import { toNumber } from "@/lib/format"
@@ -17,9 +18,10 @@ interface ClientesTableProps {
   clientes: Cliente[]
   loading?: boolean
   onClienteClick?: (cliente: Cliente) => void
+  onCreateClick?: () => void
 }
 
-export function ClientesTable({ clientes, loading, onClienteClick }: ClientesTableProps) {
+export function ClientesTable({ clientes, loading, onClienteClick, onCreateClick }: ClientesTableProps) {
   const queryClient = useQueryClient()
 
   const handlePrefetch = (id: string) => {
@@ -41,24 +43,18 @@ export function ClientesTable({ clientes, loading, onClienteClick }: ClientesTab
   }
 
   if (loading) {
-    return (
-      <div className="space-y-2 p-5">
-        {Array.from({ length: 8 }).map((_, index) => (
-          <Skeleton key={index} className="h-12 w-full" />
-        ))}
-      </div>
-    )
+    return <SkeletonTable rows={8} cols={6} />
   }
 
   if (clientes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-zinc-100">
-          <Search className="size-5 text-zinc-400" />
-        </div>
-        <p className="text-sm font-medium text-zinc-700">Nenhum cliente encontrado</p>
-        <p className="mt-1 text-xs text-zinc-400">Ajuste os filtros e tente novamente.</p>
-      </div>
+      <EmptyState
+        icon={<Users className="size-5" />}
+        title="Nenhum cliente cadastrado"
+        description="Cadastre seu primeiro cliente para começar a registrar vendas, limites de crédito e contas fiado."
+        actionLabel={onCreateClick ? "Cadastrar cliente" : undefined}
+        onAction={onCreateClick}
+      />
     )
   }
 
