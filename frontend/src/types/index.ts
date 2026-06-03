@@ -231,6 +231,12 @@ export interface UnidadeMedida {
   updated_at: string
 }
 
+export interface UnidadeMedidaPayload {
+  nome: string
+  sigla: string
+  descricao?: string
+}
+
 export interface CategoriaProduto {
   id: string
   company_id: string
@@ -239,6 +245,11 @@ export interface CategoriaProduto {
   is_active: boolean
   created_at: string
   updated_at: string
+}
+
+export interface CategoriaProdutoPayload {
+  nome: string
+  descricao?: string
 }
 
 export interface FormaVendaProduto {
@@ -504,6 +515,186 @@ export interface DashboardResumo {
   fluxoCaixa: FluxoCaixaItem[]
   boletosPendentes?: PaginatedResponse<BoletoOCR>
   notasPendentes?: PaginatedResponse<NotaEntrada>
+}
+
+export interface DashboardExecutivo {
+  caixa_atual: ApiDecimal
+  caixa_entradas: ApiDecimal
+  caixa_saidas: ApiDecimal
+  a_receber: ApiDecimal
+  fiados_em_aberto_componente: ApiDecimal
+  recebimentos_pendentes: ApiDecimal
+  a_pagar: ApiDecimal
+  contas_abertas: ApiDecimal
+  boletos_confirmados: ApiDecimal
+  fiado_em_aberto: ApiDecimal
+  fiado_vencido: ApiDecimal
+  vendas_mes: ApiDecimal
+  clientes_inadimplentes: number
+  produtos_estoque_critico: number
+  atualizado_em: string
+}
+
+export interface ReportPeriodo {
+  data_inicio: string | null
+  data_fim: string | null
+}
+
+export interface RelatorioFiadoResultado {
+  id: string
+  cliente_id: string
+  cliente: string
+  status: StatusContaFiado
+  valor_total: ApiDecimal
+  valor_pago: ApiDecimal
+  valor_restante: ApiDecimal
+  data_abertura: string
+  data_vencimento: string | null
+  dias_atraso: number
+}
+
+export interface RelatorioFiadoRanking {
+  cliente_id: string
+  cliente: string
+  saldo: ApiDecimal
+  dias_em_atraso: number
+}
+
+export interface RelatorioFiado {
+  periodo: ReportPeriodo
+  kpis: {
+    total_em_aberto: ApiDecimal
+    total_vencido: ApiDecimal
+    recebido_no_mes: ApiDecimal
+    clientes_inadimplentes: number
+  }
+  ranking_maiores_devedores: RelatorioFiadoRanking[]
+  resultados: PaginatedResponse<RelatorioFiadoResultado>
+}
+
+export interface RelatorioVendasRankingProduto {
+  produto_id: string
+  produto: string
+  quantidade: ApiDecimal
+  valor_vendido: ApiDecimal
+}
+
+export interface RelatorioVendasRankingCategoria {
+  categoria_id: string
+  categoria: string | null
+  quantidade: ApiDecimal
+  valor_vendido: ApiDecimal
+}
+
+export interface RelatorioVendasDia {
+  data: string
+  total: ApiDecimal
+  quantidade: number
+}
+
+export interface RelatorioVendaResultado {
+  id: string
+  numero: string
+  cliente: string
+  valor_total: ApiDecimal
+  desconto: ApiDecimal
+  forma_pagamento: FormaPagamentoPDV
+  created_at: string
+}
+
+export interface RelatorioVendas {
+  periodo: ReportPeriodo
+  kpis: {
+    vendas_hoje: ApiDecimal
+    vendas_mes: ApiDecimal
+    ticket_medio: ApiDecimal
+    quantidade_vendas: number
+  }
+  produtos_mais_vendidos: RelatorioVendasRankingProduto[]
+  categorias_mais_vendidas: RelatorioVendasRankingCategoria[]
+  vendas_por_dia: RelatorioVendasDia[]
+  resultados: PaginatedResponse<RelatorioVendaResultado>
+}
+
+export interface RelatorioFinanceiroFluxo {
+  data: string
+  entradas: ApiDecimal
+  saidas: ApiDecimal
+  saldo: ApiDecimal
+}
+
+export interface RelatorioFinanceiroContaResumo {
+  quantidade: number
+  total: ApiDecimal
+}
+
+export interface RelatorioFinanceiroResultado {
+  id: string
+  descricao: string
+  fornecedor: string
+  status: ContaPagar["status"]
+  valor_total: ApiDecimal
+  valor_pago: ApiDecimal
+  valor_restante: ApiDecimal
+  data_vencimento: string
+  dias_atraso: number
+}
+
+export interface RelatorioFinanceiro {
+  periodo: ReportPeriodo
+  kpis: {
+    entradas: ApiDecimal
+    saidas: ApiDecimal
+    saldo: ApiDecimal
+    lucro_bruto_estimado: ApiDecimal
+  }
+  fluxo: RelatorioFinanceiroFluxo[]
+  contas: {
+    a_vencer: RelatorioFinanceiroContaResumo
+    vencidas: RelatorioFinanceiroContaResumo
+    pagas: RelatorioFinanceiroContaResumo
+  }
+  resultados: PaginatedResponse<RelatorioFinanceiroResultado>
+}
+
+export interface RelatorioEstoqueRankingVendido {
+  produto_id: string
+  produto: string
+  quantidade: ApiDecimal
+  valor_vendido: ApiDecimal
+}
+
+export interface RelatorioEstoqueRankingParado {
+  produto_id: string
+  produto: string
+  estoque_atual: ApiDecimal
+  valor_estoque: ApiDecimal
+  ultima_venda: string | null
+}
+
+export interface RelatorioEstoqueResultado {
+  id: string
+  nome: string
+  sku: string
+  categoria: string
+  estoque_atual: ApiDecimal
+  estoque_minimo: ApiDecimal
+  custo_medio: ApiDecimal
+  valor_estoque: ApiDecimal
+  estoque_baixo: boolean
+}
+
+export interface RelatorioEstoque {
+  periodo: ReportPeriodo
+  kpis: {
+    valor_estimado_estoque: ApiDecimal
+    produtos_criticos: number
+    produtos_sem_movimentacao: number
+    produtos_com_maior_giro: number
+  }
+  top_produtos_vendidos: RelatorioEstoqueRankingVendido[]
+  top_produtos_parados: RelatorioEstoqueRankingParado[]
+  resultados: PaginatedResponse<RelatorioEstoqueResultado>
 }
 
 export interface Fornecedor {

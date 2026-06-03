@@ -2,14 +2,14 @@
 
 import * as Dialog from "@radix-ui/react-dialog"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { PackagePlus, X } from "lucide-react"
+import { PackagePlus, Plus, X } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useApiToast } from "@/hooks/use-api-toast"
 import { fornecedorDisplayName } from "@/lib/estoque"
 import { produtosService } from "@/services/produtos.service"
-import type { Produto, ProdutoPayload } from "@/types"
+import type { CategoriaProduto, PaginatedResponse, Produto, ProdutoPayload, UnidadeMedida } from "@/types"
 
 interface ProdutoFormDialogProps {
   open: boolean
@@ -43,6 +43,17 @@ interface ProdutoFormState {
   aliquota_cofins: string
 }
 
+interface CategoriaDraft {
+  nome: string
+  descricao: string
+}
+
+interface UnidadeDraft {
+  nome: string
+  sigla: string
+  descricao: string
+}
+
 const emptyForm: ProdutoFormState = {
   nome: "",
   categoria: "",
@@ -66,6 +77,17 @@ const emptyForm: ProdutoFormState = {
   aliquota_ipi: "0",
   aliquota_pis: "0",
   aliquota_cofins: "0",
+}
+
+const emptyCategoriaDraft: CategoriaDraft = {
+  nome: "",
+  descricao: "",
+}
+
+const emptyUnidadeDraft: UnidadeDraft = {
+  nome: "",
+  sigla: "",
+  descricao: "",
 }
 
 function formFromProduto(produto?: Produto | null): ProdutoFormState {
@@ -102,12 +124,36 @@ function normalizeDecimal(value: string, fallback = "0") {
   return trimmed
 }
 
+function upsertPaginatedItem<T extends { id: string }>(
+  current: PaginatedResponse<T> | undefined,
+  item: T,
+  sortFn: (a: T, b: T) => number
+) {
+  if (!current) return current
+  const exists = current.results.some((currentItem) => currentItem.id === item.id)
+  const results = [
+    ...current.results.filter((currentItem) => currentItem.id !== item.id),
+    item,
+  ].sort(sortFn)
+  return {
+    ...current,
+    count: exists ? current.count : current.count + 1,
+    results,
+  }
+}
+
 export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: ProdutoFormDialogProps) {
   const queryClient = useQueryClient()
   const toast = useApiToast()
   const [form, setForm] = useState<ProdutoFormState>(emptyForm)
   const [submitted, setSubmitted] = useState(false)
   const [formKey, setFormKey] = useState("closed")
+  const [categoriaCreatorOpen, setCategoriaCreatorOpen] = useState(false)
+  const [unidadeCreatorOpen, setUnidadeCreatorOpen] = useState(false)
+  const [categoriaDraft, setCategoriaDraft] = useState<CategoriaDraft>(emptyCategoriaDraft)
+  const [unidadeDraft, setUnidadeDraft] = useState<UnidadeDraft>(emptyUnidadeDraft)
+  const [categoriaSubmitted, setCategoriaSubmitted] = useState(false)
+  const [unidadeSubmitted, setUnidadeSubmitted] = useState(false)
   const isEditing = Boolean(produto)
   const nextFormKey = open ? `${produto?.id ?? "novo"}:${produto?.updated_at ?? ""}` : "closed"
 
@@ -115,6 +161,12 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
     setFormKey(nextFormKey)
     setForm(formFromProduto(produto))
     setSubmitted(false)
+    setCategoriaCreatorOpen(false)
+    setUnidadeCreatorOpen(false)
+    setCategoriaDraft(emptyCategoriaDraft)
+    setUnidadeDraft(emptyUnidadeDraft)
+    setCategoriaSubmitted(false)
+    setUnidadeSubmitted(false)
   }
 
   const categoriasQuery = useQuery({
@@ -160,6 +212,15 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
   }, [form])
 
   const isValid = Object.keys(validation).length === 0
+  const categoriaDraftError = categoriaSubmitted && !categoriaDraft.nome.trim()
+    ? "Informe o nome."
+    : undefined
+  const unidadeNomeError = unidadeSubmitted && !unidadeDraft.nome.trim()
+    ? "Informe o nome."
+    : undefined
+  const unidadeSiglaError = unidadeSubmitted && !unidadeDraft.sigla.trim()
+    ? "Informe a sigla."
+    : undefined
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -199,6 +260,53 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
     onError: (error) => toast.error(error),
   })
 
+  const categoriaMutation = useMutation({
+    mutationFn: () =>
+      produtosService.createCategoria({
+        nome: categoriaDraft.nome.trim(),
+        descricao: categoriaDraft.descricao.trim(),
+      }),
+    onSuccess: (saved) => {
+      queryClient.setQueryData<PaginatedResponse<CategoriaProduto>>(
+        ["estoque", "categorias", "produto-form"],
+        (current) =>
+          upsertPaginatedItem(current, saved, (a, b) => a.nome.localeCompare(b.nome, "pt-BR"))
+      )
+      queryClient.invalidateQueries({ queryKey: ["estoque", "categorias"] })
+      setForm((current) => ({ ...current, categoria: saved.id }))
+      setCategoriaCreatorOpen(false)
+      setCategoriaDraft(emptyCategoriaDraft)
+      setCategoriaSubmitted(false)
+      toast.success("Categoria criada")
+    },
+    onError: (error) => toast.error(error),
+  })
+
+  const unidadeMutation = useMutation({
+    mutationFn: () =>
+      produtosService.createUnidade({
+        nome: unidadeDraft.nome.trim(),
+        sigla: unidadeDraft.sigla.trim().toUpperCase(),
+        descricao: unidadeDraft.descricao.trim(),
+      }),
+    onSuccess: (saved) => {
+      queryClient.setQueryData<PaginatedResponse<UnidadeMedida>>(
+        ["estoque", "unidades", "produto-form"],
+        (current) =>
+          upsertPaginatedItem(current, saved, (a, b) => a.sigla.localeCompare(b.sigla, "pt-BR"))
+      )
+      queryClient.invalidateQueries({ queryKey: ["estoque", "unidades"] })
+      setForm((current) => ({ ...current, unidade: saved.id }))
+      setUnidadeCreatorOpen(false)
+      setUnidadeDraft(emptyUnidadeDraft)
+      setUnidadeSubmitted(false)
+      toast.success("Unidade criada")
+    },
+    onError: (error) => toast.error(error),
+  })
+
+  const isWorking = mutation.isPending || categoriaMutation.isPending || unidadeMutation.isPending
+
   const updateField = (field: keyof ProdutoFormState, value: string) => {
     setForm((current) => ({ ...current, [field]: value }))
   }
@@ -209,7 +317,7 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
     <Dialog.Root
       open={open}
       onOpenChange={(value) => {
-        if (!mutation.isPending) onOpenChange(value)
+        if (!isWorking) onOpenChange(value)
       }}
     >
       <Dialog.Portal>
@@ -225,7 +333,7 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
             </Dialog.Title>
             <button
               type="button"
-              disabled={mutation.isPending}
+              disabled={isWorking}
               onClick={() => onOpenChange(false)}
               className="rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-50"
               aria-label="Fechar"
@@ -241,15 +349,28 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                   value={form.nome}
                   error={Boolean(showError("nome"))}
                   onChange={(event) => updateField("nome", event.target.value)}
-                  disabled={mutation.isPending}
+                  disabled={isWorking}
                 />
               </Field>
 
-              <Field label="Categoria" error={showError("categoria")}>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-zinc-600">Categoria</span>
+                  <button
+                    type="button"
+                    onClick={() => setCategoriaCreatorOpen((value) => !value)}
+                    disabled={isWorking}
+                    className="inline-flex h-7 items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 text-xs font-medium text-zinc-700 transition-colors hover:border-orange-300 hover:text-orange-700 disabled:opacity-50"
+                  >
+                    <Plus className="size-3" />
+                    Nova
+                  </button>
+                </div>
                 <select
+                  aria-label="Categoria"
                   value={form.categoria}
                   onChange={(event) => updateField("categoria", event.target.value)}
-                  disabled={mutation.isPending || categoriasQuery.isLoading}
+                  disabled={isWorking || categoriasQuery.isLoading}
                   className="h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 disabled:bg-zinc-50 disabled:opacity-50"
                 >
                   <option value="">Selecione</option>
@@ -259,13 +380,74 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                     </option>
                   ))}
                 </select>
-              </Field>
+                {categoriaCreatorOpen && (
+                  <div className="space-y-2 rounded-md border border-orange-200 bg-orange-50/40 p-2">
+                    <Input
+                      placeholder="Nome da categoria"
+                      value={categoriaDraft.nome}
+                      error={Boolean(categoriaDraftError)}
+                      onChange={(event) =>
+                        setCategoriaDraft((current) => ({ ...current, nome: event.target.value }))
+                      }
+                      disabled={isWorking}
+                    />
+                    {categoriaDraftError && (
+                      <span className="block text-[11px] font-medium text-red-600">
+                        {categoriaDraftError}
+                      </span>
+                    )}
+                    <textarea
+                      placeholder="Descrição"
+                      value={categoriaDraft.descricao}
+                      rows={2}
+                      onChange={(event) =>
+                        setCategoriaDraft((current) => ({ ...current, descricao: event.target.value }))
+                      }
+                      disabled={isWorking}
+                      className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 disabled:bg-zinc-50 disabled:opacity-50"
+                    />
+                    <div className="flex justify-end gap-1.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        disabled={isWorking}
+                        onClick={() => {
+                          setCategoriaCreatorOpen(false)
+                          setCategoriaDraft(emptyCategoriaDraft)
+                          setCategoriaSubmitted(false)
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        size="xs"
+                        loading={categoriaMutation.isPending}
+                        disabled={isWorking}
+                        onClick={() => {
+                          setCategoriaSubmitted(true)
+                          if (!categoriaDraft.nome.trim()) return
+                          categoriaMutation.mutate()
+                        }}
+                      >
+                        Criar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {showError("categoria") && (
+                  <span className="block text-[11px] font-medium text-red-600">
+                    {showError("categoria")}
+                  </span>
+                )}
+              </div>
 
               <Field label="Código / SKU">
                 <Input
                   value={form.sku}
                   onChange={(event) => updateField("sku", event.target.value)}
-                  disabled={mutation.isPending}
+                  disabled={isWorking}
                 />
               </Field>
 
@@ -273,15 +455,28 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                 <Input
                   value={form.codigo_barras}
                   onChange={(event) => updateField("codigo_barras", event.target.value)}
-                  disabled={mutation.isPending}
+                  disabled={isWorking}
                 />
               </Field>
 
-              <Field label="Unidade base" error={showError("unidade")}>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-zinc-600">Unidade base</span>
+                  <button
+                    type="button"
+                    onClick={() => setUnidadeCreatorOpen((value) => !value)}
+                    disabled={isWorking}
+                    className="inline-flex h-7 items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 text-xs font-medium text-zinc-700 transition-colors hover:border-orange-300 hover:text-orange-700 disabled:opacity-50"
+                  >
+                    <Plus className="size-3" />
+                    Nova
+                  </button>
+                </div>
                 <select
+                  aria-label="Unidade base"
                   value={form.unidade}
                   onChange={(event) => updateField("unidade", event.target.value)}
-                  disabled={mutation.isPending || unidadesQuery.isLoading}
+                  disabled={isWorking || unidadesQuery.isLoading}
                   className="h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 disabled:bg-zinc-50 disabled:opacity-50"
                 >
                   <option value="">Selecione</option>
@@ -291,13 +486,98 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                     </option>
                   ))}
                 </select>
-              </Field>
+                {unidadeCreatorOpen && (
+                  <div className="space-y-2 rounded-md border border-orange-200 bg-orange-50/40 p-2">
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_96px]">
+                      <div>
+                        <Input
+                          placeholder="Nome da unidade"
+                          value={unidadeDraft.nome}
+                          error={Boolean(unidadeNomeError)}
+                          onChange={(event) =>
+                            setUnidadeDraft((current) => ({ ...current, nome: event.target.value }))
+                          }
+                          disabled={isWorking}
+                        />
+                        {unidadeNomeError && (
+                          <span className="mt-1 block text-[11px] font-medium text-red-600">
+                            {unidadeNomeError}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <Input
+                          placeholder="Sigla"
+                          value={unidadeDraft.sigla}
+                          maxLength={20}
+                          error={Boolean(unidadeSiglaError)}
+                          onChange={(event) =>
+                            setUnidadeDraft((current) => ({
+                              ...current,
+                              sigla: event.target.value.toUpperCase(),
+                            }))
+                          }
+                          disabled={isWorking}
+                        />
+                        {unidadeSiglaError && (
+                          <span className="mt-1 block text-[11px] font-medium text-red-600">
+                            {unidadeSiglaError}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <textarea
+                      placeholder="Descrição"
+                      value={unidadeDraft.descricao}
+                      rows={2}
+                      onChange={(event) =>
+                        setUnidadeDraft((current) => ({ ...current, descricao: event.target.value }))
+                      }
+                      disabled={isWorking}
+                      className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 disabled:bg-zinc-50 disabled:opacity-50"
+                    />
+                    <div className="flex justify-end gap-1.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="xs"
+                        disabled={isWorking}
+                        onClick={() => {
+                          setUnidadeCreatorOpen(false)
+                          setUnidadeDraft(emptyUnidadeDraft)
+                          setUnidadeSubmitted(false)
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        type="button"
+                        size="xs"
+                        loading={unidadeMutation.isPending}
+                        disabled={isWorking}
+                        onClick={() => {
+                          setUnidadeSubmitted(true)
+                          if (!unidadeDraft.nome.trim() || !unidadeDraft.sigla.trim()) return
+                          unidadeMutation.mutate()
+                        }}
+                      >
+                        Criar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {showError("unidade") && (
+                  <span className="block text-[11px] font-medium text-red-600">
+                    {showError("unidade")}
+                  </span>
+                )}
+              </div>
 
               <Field label="Fornecedor">
                 <select
                   value={form.fornecedor_principal}
                   onChange={(event) => updateField("fornecedor_principal", event.target.value)}
-                  disabled={mutation.isPending || fornecedoresQuery.isLoading}
+                  disabled={isWorking || fornecedoresQuery.isLoading}
                   className="h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 disabled:bg-zinc-50 disabled:opacity-50"
                 >
                   <option value="">Sem fornecedor</option>
@@ -317,7 +597,7 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                   value={form.estoque_minimo}
                   error={Boolean(showError("estoque_minimo"))}
                   onChange={(event) => updateField("estoque_minimo", event.target.value)}
-                  disabled={mutation.isPending}
+                  disabled={isWorking}
                 />
               </Field>
 
@@ -329,7 +609,7 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                   value={form.preco_compra}
                   error={Boolean(showError("preco_compra"))}
                   onChange={(event) => updateField("preco_compra", event.target.value)}
-                  disabled={mutation.isPending}
+                  disabled={isWorking}
                 />
               </Field>
 
@@ -341,7 +621,7 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                   value={form.preco_venda}
                   error={Boolean(showError("preco_venda"))}
                   onChange={(event) => updateField("preco_venda", event.target.value)}
-                  disabled={mutation.isPending}
+                  disabled={isWorking}
                 />
               </Field>
 
@@ -359,7 +639,7 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                       maxLength={8}
                       error={Boolean(showError("ncm"))}
                       onChange={(event) => updateField("ncm", event.target.value.replace(/\D/g, ""))}
-                      disabled={mutation.isPending}
+                      disabled={isWorking}
                     />
                   </Field>
                   <Field label="CFOP padrão" error={showError("cfop_padrao")}>
@@ -368,7 +648,7 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                       maxLength={4}
                       error={Boolean(showError("cfop_padrao"))}
                       onChange={(event) => updateField("cfop_padrao", event.target.value.replace(/\D/g, ""))}
-                      disabled={mutation.isPending}
+                      disabled={isWorking}
                     />
                   </Field>
                   <Field label="CST/CSOSN">
@@ -376,7 +656,7 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                       value={form.cst_csosn}
                       maxLength={4}
                       onChange={(event) => updateField("cst_csosn", event.target.value.toUpperCase())}
-                      disabled={mutation.isPending}
+                      disabled={isWorking}
                     />
                   </Field>
                   <Field label="CEST" error={showError("cest")}>
@@ -385,14 +665,14 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                       maxLength={7}
                       error={Boolean(showError("cest"))}
                       onChange={(event) => updateField("cest", event.target.value.replace(/\D/g, ""))}
-                      disabled={mutation.isPending}
+                      disabled={isWorking}
                     />
                   </Field>
                   <Field label="Origem" >
                     <select
                       value={form.origem_mercadoria}
                       onChange={(event) => updateField("origem_mercadoria", event.target.value)}
-                      disabled={mutation.isPending}
+                      disabled={isWorking}
                       className="h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 disabled:bg-zinc-50 disabled:opacity-50"
                     >
                       <option value="0">0 - Nacional</option>
@@ -410,34 +690,34 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                     <Input
                       value={form.unidade_tributavel}
                       onChange={(event) => updateField("unidade_tributavel", event.target.value.toUpperCase())}
-                      disabled={mutation.isPending}
+                      disabled={isWorking}
                     />
                   </Field>
                   <Field label="EAN tributável">
                     <Input
                       value={form.ean_tributavel}
                       onChange={(event) => updateField("ean_tributavel", event.target.value)}
-                      disabled={mutation.isPending}
+                      disabled={isWorking}
                     />
                   </Field>
                   <Field label="Benefício fiscal">
                     <Input
                       value={form.codigo_beneficio_fiscal}
                       onChange={(event) => updateField("codigo_beneficio_fiscal", event.target.value.toUpperCase())}
-                      disabled={mutation.isPending}
+                      disabled={isWorking}
                     />
                   </Field>
                   <Field label="ICMS %" error={showError("aliquota_icms")}>
-                    <Input type="number" min="0" step="0.0001" value={form.aliquota_icms} onChange={(event) => updateField("aliquota_icms", event.target.value)} disabled={mutation.isPending} />
+                    <Input type="number" min="0" step="0.0001" value={form.aliquota_icms} onChange={(event) => updateField("aliquota_icms", event.target.value)} disabled={isWorking} />
                   </Field>
                   <Field label="IPI %" error={showError("aliquota_ipi")}>
-                    <Input type="number" min="0" step="0.0001" value={form.aliquota_ipi} onChange={(event) => updateField("aliquota_ipi", event.target.value)} disabled={mutation.isPending} />
+                    <Input type="number" min="0" step="0.0001" value={form.aliquota_ipi} onChange={(event) => updateField("aliquota_ipi", event.target.value)} disabled={isWorking} />
                   </Field>
                   <Field label="PIS %" error={showError("aliquota_pis")}>
-                    <Input type="number" min="0" step="0.0001" value={form.aliquota_pis} onChange={(event) => updateField("aliquota_pis", event.target.value)} disabled={mutation.isPending} />
+                    <Input type="number" min="0" step="0.0001" value={form.aliquota_pis} onChange={(event) => updateField("aliquota_pis", event.target.value)} disabled={isWorking} />
                   </Field>
                   <Field label="COFINS %" error={showError("aliquota_cofins")}>
-                    <Input type="number" min="0" step="0.0001" value={form.aliquota_cofins} onChange={(event) => updateField("aliquota_cofins", event.target.value)} disabled={mutation.isPending} />
+                    <Input type="number" min="0" step="0.0001" value={form.aliquota_cofins} onChange={(event) => updateField("aliquota_cofins", event.target.value)} disabled={isWorking} />
                   </Field>
                 </div>
               </div>
@@ -448,7 +728,7 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                     value={form.descricao}
                     rows={3}
                     onChange={(event) => updateField("descricao", event.target.value)}
-                    disabled={mutation.isPending}
+                    disabled={isWorking}
                     className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 disabled:bg-zinc-50 disabled:opacity-50"
                   />
                 </Field>
@@ -461,7 +741,7 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
               type="button"
               variant="outline"
               size="sm"
-              disabled={mutation.isPending}
+              disabled={isWorking}
               onClick={() => onOpenChange(false)}
             >
               Cancelar
@@ -470,6 +750,7 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
               type="button"
               size="sm"
               loading={mutation.isPending}
+              disabled={isWorking}
               onClick={() => {
                 setSubmitted(true)
                 if (isValid) mutation.mutate()

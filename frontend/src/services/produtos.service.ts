@@ -1,11 +1,13 @@
 import type {
   CategoriaProduto,
+  CategoriaProdutoPayload,
   Fornecedor,
   PaginatedResponse,
   PaginationParams,
   Produto,
   ProdutoPayload,
   UnidadeMedida,
+  UnidadeMedidaPayload,
 } from "@/types"
 import { api } from "./api"
 import { toQueryString } from "./query-params"
@@ -57,10 +59,20 @@ export const produtosService = {
     return response.data
   },
 
+  async createCategoria(payload: CategoriaProdutoPayload) {
+    const response = await api.post<CategoriaProduto>("/estoque/categorias/", payload)
+    return response.data
+  },
+
   async unidades(params?: PaginationParams) {
     const response = await api.get<PaginatedResponse<UnidadeMedida>>(
       `/estoque/unidades/${toQueryString(params)}`
     )
+    return response.data
+  },
+
+  async createUnidade(payload: UnidadeMedidaPayload) {
+    const response = await api.post<UnidadeMedida>("/estoque/unidades/", payload)
     return response.data
   },
 

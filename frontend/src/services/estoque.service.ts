@@ -1,6 +1,8 @@
 import type {
+  CategoriaProdutoPayload,
   PaginationParams,
   ProdutoPayload,
+  UnidadeMedidaPayload,
 } from "@/types"
 import { formasVendaService } from "./formas-venda.service"
 import { movimentacoesEstoqueService } from "./movimentacoes-estoque.service"
@@ -11,8 +13,16 @@ export const estoqueService = {
     return produtosService.categorias(params)
   },
 
+  async createCategoria(payload: CategoriaProdutoPayload) {
+    return produtosService.createCategoria(payload)
+  },
+
   async unidades(params?: PaginationParams) {
     return produtosService.unidades(params)
+  },
+
+  async createUnidade(payload: UnidadeMedidaPayload) {
+    return produtosService.createUnidade(payload)
   },
 
   async list(params?: PaginationParams) {
