@@ -33,6 +33,10 @@ export const estoqueService = {
     return produtosService.lowStock(params)
   },
 
+  async auditoriaOperacional() {
+    return produtosService.auditoriaOperacional()
+  },
+
   async get(id: string) {
     return produtosService.get(id)
   },
@@ -51,6 +55,10 @@ export const estoqueService = {
 
   async inativar(id: string) {
     return produtosService.inativar(id)
+  },
+
+  async garantirFormaVenda(id: string) {
+    return produtosService.garantirFormaVenda(id)
   },
 
   async movimentacoes(id: string, params?: PaginationParams) {

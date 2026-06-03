@@ -3,7 +3,7 @@ from decimal import Decimal
 import pytest
 
 from apps.core.models import AuditLog
-from apps.estoque.models import MovimentacaoEstoque, Produto
+from apps.estoque.models import FormaVendaProduto, MovimentacaoEstoque, Produto
 from apps.estoque.services import entrada_estoque
 from .conftest import make_categoria, make_fornecedor, make_produto, make_unidade
 
@@ -105,6 +105,25 @@ class TestProdutoViews:
         assert r.status_code == 201
         assert r.data["estoque_atual"] == "0.000"
         assert Produto.objects.filter(pk=r.data["id"]).exists()
+        assert FormaVendaProduto.objects.filter(produto_id=r.data["id"], ativo=True).exists()
+
+    def test_garantir_forma_venda_action(self, manager_client, produto):
+        r = manager_client.post(f"{detail(PRODUTOS_URL, produto.pk)}garantir-forma-venda/")
+
+        assert r.status_code == 200
+        assert r.data["nome"] == "Unidade"
+        assert r.data["fator_conversao"] == "1.000000"
+
+        repetir = manager_client.post(f"{detail(PRODUTOS_URL, produto.pk)}garantir-forma-venda/")
+        assert repetir.status_code == 200
+        assert repetir.data["id"] == r.data["id"]
+
+    def test_auditoria_operacional_lista_produtos_sem_forma(self, viewer_client, produto):
+        r = viewer_client.get(f"{PRODUTOS_URL}auditoria-operacional/")
+
+        assert r.status_code == 200
+        ids = [item["id"] for item in r.data["sem_forma_venda"]["results"]]
+        assert str(produto.pk) in ids
 
     def test_seller_and_viewer_cannot_create_product(self, seller_client, viewer_client):
         assert seller_client.post(PRODUTOS_URL, data={}, format="json").status_code == 403

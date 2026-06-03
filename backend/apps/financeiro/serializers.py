@@ -9,10 +9,12 @@ from apps.estoque.models import Fornecedor
 from .models import (
     CaixaDiario,
     CategoriaFinanceira,
+    ConfiguracaoFinanceiraOperacional,
     ContaFinanceira,
     ContaPagar,
     LancamentoFinanceiro,
 )
+from .services.configuracao import destinos_pdv
 
 
 class RejectCompanyPayloadMixin:
@@ -86,6 +88,90 @@ class ContaFinanceiraUpdateSerializer(RejectCompanyPayloadMixin, serializers.Mod
             "ativo": {"required": False},
             "observacao": {"required": False, "allow_blank": True},
         }
+
+
+class DestinoPdvSerializer(serializers.Serializer):
+    forma_pagamento = serializers.CharField()
+    conta = serializers.UUIDField(allow_null=True)
+    conta_nome = serializers.CharField(allow_blank=True)
+    conta_tipo = serializers.CharField(allow_blank=True)
+    configurada = serializers.BooleanField()
+
+
+class ConfiguracaoFinanceiraOperacionalSerializer(TenantScopedSerializerMixin, BaseModelSerializer):
+    tenant_scoped_fields = {
+        "conta_pix": ContaFinanceira,
+        "conta_dinheiro": ContaFinanceira,
+        "conta_cartao": ContaFinanceira,
+        "conta_transferencia": ContaFinanceira,
+    }
+    company_id = serializers.UUIDField(read_only=True)
+    conta_pix_nome = serializers.CharField(source="conta_pix.nome", read_only=True)
+    conta_dinheiro_nome = serializers.CharField(source="conta_dinheiro.nome", read_only=True)
+    conta_cartao_nome = serializers.CharField(source="conta_cartao.nome", read_only=True)
+    conta_transferencia_nome = serializers.CharField(source="conta_transferencia.nome", read_only=True)
+    updated_by_nome = serializers.CharField(source="updated_by.name", read_only=True)
+    destinos_pdv = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ConfiguracaoFinanceiraOperacional
+        fields = [
+            "id",
+            "company_id",
+            "conta_pix",
+            "conta_pix_nome",
+            "conta_dinheiro",
+            "conta_dinheiro_nome",
+            "conta_cartao",
+            "conta_cartao_nome",
+            "conta_transferencia",
+            "conta_transferencia_nome",
+            "destinos_pdv",
+            "updated_by",
+            "updated_by_nome",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "company_id",
+            "conta_pix_nome",
+            "conta_dinheiro_nome",
+            "conta_cartao_nome",
+            "conta_transferencia_nome",
+            "destinos_pdv",
+            "updated_by",
+            "updated_by_nome",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        extra_kwargs = {
+            "conta_pix": {"required": False, "allow_null": True},
+            "conta_dinheiro": {"required": False, "allow_null": True},
+            "conta_cartao": {"required": False, "allow_null": True},
+            "conta_transferencia": {"required": False, "allow_null": True},
+        }
+
+    def get_destinos_pdv(self, obj):
+        resolvidos = destinos_pdv(company_id=obj.company_id)
+        configuradas = {
+            "PIX": obj.conta_pix_id,
+            "DINHEIRO": obj.conta_dinheiro_id,
+            "CARTAO": obj.conta_cartao_id,
+            "TRANSFERENCIA": obj.conta_transferencia_id,
+        }
+        data = []
+        for forma_pagamento, conta in resolvidos.items():
+            data.append({
+                "forma_pagamento": forma_pagamento,
+                "conta": conta.pk if conta else None,
+                "conta_nome": conta.nome if conta else "",
+                "conta_tipo": conta.tipo if conta else "",
+                "configurada": bool(configuradas.get(forma_pagamento)),
+            })
+        return DestinoPdvSerializer(data, many=True).data
 
 
 class AjusteSaldoSerializer(TenantScopedSerializerMixin, serializers.Serializer):
@@ -403,6 +489,9 @@ class DashboardFinanceiroSerializer(serializers.Serializer):
     total_contas_pagar_vencidas = serializers.DecimalField(max_digits=14, decimal_places=2)
     saldo_caixa = serializers.DecimalField(max_digits=14, decimal_places=2)
     saldo_total_financeiro = serializers.DecimalField(max_digits=14, decimal_places=2)
+    inadimplencia_valor_cobrado = serializers.DecimalField(max_digits=14, decimal_places=2)
+    inadimplencia_valor_recuperado = serializers.DecimalField(max_digits=14, decimal_places=2)
+    inadimplencia_percentual_recuperacao = serializers.FloatField()
     fluxo_diario = serializers.ListField(child=serializers.DictField())
     entradas_por_categoria = serializers.ListField(child=serializers.DictField())
     saidas_por_categoria = serializers.ListField(child=serializers.DictField())

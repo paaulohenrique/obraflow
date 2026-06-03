@@ -243,6 +243,9 @@ def get_dashboard_financeiro(*, company_id: Any) -> dict[str, Any]:
         .annotate(total=Sum("valor"))
         .order_by("categoria__nome")
     )
+    from apps.cobrancas.selectors import recuperacao_inadimplencia
+
+    recuperacao = recuperacao_inadimplencia(company_id)
 
     return {
         "recebido_hoje": _sum_money(entradas.filter(data_lancamento__date=hoje)),
@@ -270,6 +273,9 @@ def get_dashboard_financeiro(*, company_id: Any) -> dict[str, Any]:
             get_contas_financeiras(company_id=company_id).filter(ativo=True),
             field="saldo_atual",
         ),
+        "inadimplencia_valor_cobrado": recuperacao["valor_cobrado"],
+        "inadimplencia_valor_recuperado": recuperacao["valor_recuperado"],
+        "inadimplencia_percentual_recuperacao": recuperacao["percentual_recuperacao"],
         "fluxo_diario": [
             {
                 "data": item["dia"].isoformat(),

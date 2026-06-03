@@ -12,6 +12,12 @@ from .conta import (
     update_conta_financeira,
 )
 from .conta_pagar import cancelar_conta_pagar, criar_conta_pagar, pagar_conta_pagar
+from .configuracao import (
+    atualizar_configuracao_financeira_operacional,
+    destinos_pdv,
+    get_or_create_configuracao_financeira_operacional,
+    resolver_conta_operacional_pdv,
+)
 from .integracao_fiado import estornar_recebimento_fiado, registrar_recebimento_fiado
 from .lancamento import (
     cancelar_lancamento_financeiro,
@@ -29,15 +35,19 @@ __all__ = [
     "criar_conta_financeira",
     "criar_conta_pagar",
     "criar_lancamento_financeiro",
+    "atualizar_configuracao_financeira_operacional",
+    "destinos_pdv",
     "estornar_recebimento_fiado",
     "fechar_caixa",
     "get_caixa_aberto",
+    "get_or_create_configuracao_financeira_operacional",
     "get_or_create_lancamento_idempotente",
     "inativar_categoria_financeira",
     "inativar_conta_financeira",
     "pagar_conta_pagar",
     "reabrir_caixa",
     "registrar_recebimento_fiado",
+    "resolver_conta_operacional_pdv",
     "update_categoria_financeira",
     "update_conta_financeira",
 ]

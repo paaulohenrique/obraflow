@@ -2,6 +2,8 @@ import type {
   CancelarContaPagarPayload,
   CancelarLancamentoPayload,
   CategoriaFinanceira,
+  ConfiguracaoFinanceiraOperacional,
+  ConfiguracaoFinanceiraOperacionalPayload,
   ContaFinanceira,
   ContaPagar,
   CriarContaPagarPayload,
@@ -18,6 +20,21 @@ import { toQueryString } from "./query-params"
 export const financeiroService = {
   async dashboard() {
     const response = await api.get<DashboardFinanceiro>("/financeiro/dashboard/")
+    return response.data
+  },
+
+  async configuracaoOperacional() {
+    const response = await api.get<ConfiguracaoFinanceiraOperacional>(
+      "/financeiro/configuracao-operacional/"
+    )
+    return response.data
+  },
+
+  async atualizarConfiguracaoOperacional(payload: ConfiguracaoFinanceiraOperacionalPayload) {
+    const response = await api.patch<ConfiguracaoFinanceiraOperacional>(
+      "/financeiro/configuracao-operacional/atualizar/",
+      payload
+    )
     return response.data
   },
 

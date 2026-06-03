@@ -98,6 +98,66 @@ class ContaFinanceira(BaseModel):
         return f"{self.nome} ({self.tipo})"
 
 
+class ConfiguracaoFinanceiraOperacional(BaseModel):
+    company = models.OneToOneField(
+        "empresas.Empresa",
+        on_delete=models.PROTECT,
+        related_name="configuracao_financeira_operacional",
+    )
+    conta_pix = models.ForeignKey(
+        ContaFinanceira,
+        on_delete=models.PROTECT,
+        related_name="configuracoes_pix",
+        null=True,
+        blank=True,
+    )
+    conta_dinheiro = models.ForeignKey(
+        ContaFinanceira,
+        on_delete=models.PROTECT,
+        related_name="configuracoes_dinheiro",
+        null=True,
+        blank=True,
+    )
+    conta_cartao = models.ForeignKey(
+        ContaFinanceira,
+        on_delete=models.PROTECT,
+        related_name="configuracoes_cartao",
+        null=True,
+        blank=True,
+    )
+    conta_transferencia = models.ForeignKey(
+        ContaFinanceira,
+        on_delete=models.PROTECT,
+        related_name="configuracoes_transferencia",
+        null=True,
+        blank=True,
+    )
+    updated_by = models.ForeignKey(
+        "accounts.User",
+        on_delete=models.SET_NULL,
+        related_name="configuracoes_financeiras_atualizadas",
+        null=True,
+        blank=True,
+    )
+
+    class Meta(BaseModel.Meta):
+        verbose_name = "Configuração Financeira Operacional"
+        verbose_name_plural = "Configurações Financeiras Operacionais"
+        indexes = [models.Index(fields=["company"])]
+
+    def clean(self):
+        super().clean()
+        for field in ("conta_pix", "conta_dinheiro", "conta_cartao", "conta_transferencia"):
+            conta = getattr(self, field)
+            if conta and self.company_id and conta.company_id != self.company_id:
+                raise ValidationError({field: "Conta financeira não pertence à empresa."})
+            if conta and not conta.ativo:
+                raise ValidationError({field: "Conta financeira inativa não pode ser usada no PDV."})
+
+    def __str__(self):
+        return f"Configuração financeira operacional - {self.company}"
+
+
 class CategoriaFinanceira(BaseModel):
     TIPO_RECEITA = "RECEITA"
     TIPO_DESPESA = "DESPESA"

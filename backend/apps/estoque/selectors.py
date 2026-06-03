@@ -3,7 +3,7 @@ from typing import Any
 import uuid
 
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import F, Q, QuerySet
+from django.db.models import Count, F, Q, QuerySet
 from rest_framework.exceptions import NotFound, PermissionDenied
 
 from .models import (
@@ -177,6 +177,47 @@ def produtos_baixo_estoque(*, company_id: Any) -> QuerySet:
         estoque_atual__lte=F("estoque_minimo"),
         is_active=True,
     )
+
+
+def auditoria_produtos_operacionais(*, company_id: Any) -> dict[str, Any]:
+    qs = get_produtos(company_id=company_id).annotate(
+        formas_ativas=Count(
+            "formas_venda",
+            filter=Q(
+                formas_venda__ativo=True,
+                formas_venda__deleted_at__isnull=True,
+            ),
+            distinct=True,
+        )
+    )
+
+    grupos = {
+        "sem_forma_venda": qs.filter(is_active=True, formas_ativas=0),
+        "sem_categoria": qs.filter(categoria__isnull=True),
+        "sem_unidade": qs.filter(unidade__isnull=True),
+        "sem_preco": qs.filter(is_active=True, preco_venda__lte=Decimal("0.00")),
+        "inativos": qs.filter(is_active=False),
+    }
+
+    def resumir(item: Produto) -> dict[str, Any]:
+        return {
+            "id": str(item.pk),
+            "nome": item.nome,
+            "sku": item.sku,
+            "categoria_nome": item.categoria.nome if item.categoria_id else "",
+            "unidade_sigla": item.unidade.sigla if item.unidade_id else "",
+            "preco_venda": item.preco_venda,
+            "estoque_atual": item.estoque_atual,
+            "is_active": item.is_active,
+        }
+
+    return {
+        chave: {
+            "count": grupo.count(),
+            "results": [resumir(item) for item in grupo.order_by("nome")[:10]],
+        }
+        for chave, grupo in grupos.items()
+    }
 
 
 def search_movimentacoes(*, company_id: Any, filters: dict | None = None) -> QuerySet:

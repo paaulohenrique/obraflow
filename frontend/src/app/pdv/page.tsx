@@ -1,8 +1,13 @@
 "use client"
 
-import { useReducer, useState, useCallback } from "react"
+import Link from "next/link"
+import { useReducer, useState, useCallback, useMemo } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
+  AlertCircle,
+  Banknote,
+  CreditCard,
+  Landmark,
   Package,
   ShoppingCart,
   Trash2,
@@ -10,6 +15,8 @@ import {
   Download,
   Plus,
   Minus,
+  QrCode,
+  type LucideIcon,
 } from "lucide-react"
 import * as Dialog from "@radix-ui/react-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -36,6 +43,15 @@ import type {
   Venda,
 } from "@/types"
 
+
+// ─── Helpers de formatação ────────────────────────────────────────────────────
+
+function formatQtd(qty: number, unit: string): string {
+  // Remove zeros desnecessários: 4,000 → "4", 4,500 → "4,5", 4,567 → "4,567"
+  const raw = formatNumber(qty, 3)
+  const stripped = raw.replace(/,?0+$/, "")
+  return `${stripped} ${unit.toLowerCase()}`
+}
 
 // ─── Carrinho (reducer) ────────────────────────────────────────────────────────
 
@@ -76,11 +92,11 @@ function cartReducer(state: CartItem[], action: CartAction): CartItem[] {
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const FORMAS: { value: FormaPagamentoPDV; label: string; emoji: string }[] = [
-  { value: "PIX", label: "PIX", emoji: "⚡" },
-  { value: "DINHEIRO", label: "Dinheiro", emoji: "💵" },
-  { value: "CARTAO", label: "Cartão", emoji: "💳" },
-  { value: "TRANSFERENCIA", label: "Transf.", emoji: "🏦" },
+const FORMAS: { value: FormaPagamentoPDV; label: string; icon: LucideIcon }[] = [
+  { value: "PIX", label: "PIX", icon: QrCode },
+  { value: "DINHEIRO", label: "Dinheiro", icon: Banknote },
+  { value: "CARTAO", label: "Cartão", icon: CreditCard },
+  { value: "TRANSFERENCIA", label: "Transf.", icon: Landmark },
 ]
 
 // ─── Dialog de sucesso ─────────────────────────────────────────────────────────
@@ -149,7 +165,6 @@ export default function PdvPage() {
 
   // Pagamento
   const [formaPagamento, setFormaPagamento] = useState<FormaPagamentoPDV>("PIX")
-  const [contaFinanceira, setContaFinanceira] = useState<string>("")
   const [desconto, setDesconto] = useState<number>(0)
 
   // Formas de venda do produto selecionado
@@ -159,15 +174,23 @@ export default function PdvPage() {
     enabled: Boolean(selectedProduto),
     staleTime: 30_000,
   })
-  const formasVenda = (formasQuery.data?.results ?? []).filter((f) => f.ativo && f.is_active)
+  const formasVenda = useMemo(
+    () => (formasQuery.data?.results ?? []).filter((f) => f.ativo && f.is_active),
+    [formasQuery.data?.results]
+  )
+  const formaOperacional = selectedForma ?? formasVenda.find((forma) => forma.padrao) ?? formasVenda[0] ?? null
+  const formaOperacionalPreco = toNumber(formaOperacional?.preco_venda)
+  const precoOperacional = !selectedForma && formaOperacionalPreco > 0 ? formaOperacionalPreco : preco
 
-  // Contas financeiras
-  const contasQuery = useQuery({
-    queryKey: ["financeiro", "contas-financeiras"],
-    queryFn: () => financeiroService.contasFinanceiras({ page_size: 100 }),
+  const configFinanceiraQuery = useQuery({
+    queryKey: ["financeiro", "configuracao-operacional"],
+    queryFn: financeiroService.configuracaoOperacional,
     staleTime: 60_000,
   })
-  const contas = (contasQuery.data?.results ?? []).filter((c) => c.ativo)
+  const destinoPdv = configFinanceiraQuery.data?.destinos_pdv.find(
+    (destino) => destino.forma_pagamento === formaPagamento
+  )
+  const contaFinanceira = destinoPdv?.conta ?? ""
 
   // Dashboard de vendas do dia
   const dashQuery = useQuery({
@@ -183,8 +206,8 @@ export default function PdvPage() {
 
   // Estoque disponível para o produto selecionado
   const estoqueAtual = selectedProduto ? toNumber(selectedProduto.estoque_atual) : 0
-  const quantidadeConvertida = selectedForma
-    ? quantidade * toNumber(selectedForma.fator_conversao)
+  const quantidadeConvertida = formaOperacional
+    ? quantidade * toNumber(formaOperacional.fator_conversao)
     : quantidade
   const estoqueInsuficiente = selectedProduto != null && quantidadeConvertida > estoqueAtual
 
@@ -209,18 +232,29 @@ export default function PdvPage() {
     if (formaPreco > 0) setPreco(formaPreco)
   }, [])
 
+  const criarFormaMutation = useMutation({
+    mutationFn: (produtoId: string) => estoqueService.garantirFormaVenda(produtoId),
+    onSuccess: (forma) => {
+      queryClient.invalidateQueries({ queryKey: ["estoque", "formas-venda", forma.produto_id] })
+      queryClient.invalidateQueries({ queryKey: ["estoque"] })
+      handleFormaSelect(forma)
+      toast.success("Forma de venda criada")
+    },
+    onError: (error) => toast.error(error),
+  })
+
   // Adicionar item ao carrinho
   const handleAdicionarItem = () => {
-    if (!selectedProduto || estoqueInsuficiente) return
+    if (!selectedProduto || !formaOperacional || estoqueInsuficiente) return
     const cartId = crypto.randomUUID()
     const item: CartItem = {
       cartId,
       produto: selectedProduto,
-      formaVenda: selectedForma,
+      formaVenda: formaOperacional,
       quantidadeInformada: quantidade,
       quantidade: quantidadeConvertida,
-      precoUnitario: preco,
-      subtotal: quantidade * preco,
+      precoUnitario: precoOperacional,
+      subtotal: quantidade * precoOperacional,
     }
     dispatch({ type: "ADD", item })
     setSelectedProduto(null)
@@ -249,7 +283,11 @@ export default function PdvPage() {
   })
 
   const handleFinalizarVenda = () => {
-    if (cart.length === 0 || !contaFinanceira) return
+    if (cart.length === 0) return
+    if (!contaFinanceira) {
+      toast.error("Defina a conta de destino em Configurações Financeiras.")
+      return
+    }
     const payload: CriarVendaPayload = {
       itens: cart.map((item) => ({
         produto: item.produto.id,
@@ -270,7 +308,6 @@ export default function PdvPage() {
     setVendaConcluida(null)
     setDesconto(0)
     setFormaPagamento("PIX")
-    setContaFinanceira("")
   }
 
   const handleDownloadPdf = () => {
@@ -328,13 +365,25 @@ export default function PdvPage() {
                   {formasQuery.isLoading ? (
                     <div className="h-14 animate-pulse rounded-md bg-zinc-100" />
                   ) : formasVenda.length === 0 ? (
-                    <div className="rounded-md border border-dashed border-zinc-200 px-3 py-2 text-xs text-zinc-400">
-                      Nenhuma forma de venda — usando unidade base.
+                    <div className="rounded-md border border-yellow-200 bg-yellow-50 px-3 py-3 text-xs text-yellow-900">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span>Este produto ainda não possui forma de venda.</span>
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="outline"
+                          loading={criarFormaMutation.isPending}
+                          disabled={criarFormaMutation.isPending}
+                          onClick={() => criarFormaMutation.mutate(selectedProduto.id)}
+                        >
+                          Criar agora
+                        </Button>
+                      </div>
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
                       {formasVenda.map((forma) => {
-                        const sel = selectedForma?.id === forma.id
+                        const sel = (selectedForma?.id ?? formaOperacional?.id) === forma.id
                         return (
                           <button
                             key={forma.id}
@@ -349,7 +398,9 @@ export default function PdvPage() {
                           >
                             <span className="block font-semibold text-zinc-900">{forma.nome}</span>
                             <span className="mt-0.5 block text-[11px] text-zinc-500">
-                              1 {forma.unidade} = {formatNumber(forma.fator_conversao, 3)} {selectedProduto.unidade_sigla}
+                              1 {forma.unidade.toLowerCase()} baixa{" "}
+                              {formatNumber(forma.fator_conversao, 3).replace(/,?0+$/, "")}{" "}
+                              {selectedProduto.unidade_sigla.toLowerCase()}
                             </span>
                             {toNumber(forma.preco_venda) > 0 && (
                               <span className="mt-0.5 block text-[11px] font-medium text-zinc-700 tabular-nums">
@@ -379,36 +430,51 @@ export default function PdvPage() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-zinc-600">
-                      Preço / {selectedForma?.unidade ?? selectedProduto.unidade_sigla}
+                      Preço / {formaOperacional?.unidade ?? selectedProduto.unidade_sigla}
                     </label>
                     <Input
                       type="number"
                       step="0.01"
                       min="0"
-                      value={preco}
-                      onChange={(e) => setPreco(Number(e.target.value))}
+                      value={precoOperacional}
+                      onChange={(e) => {
+                        if (!selectedForma && formaOperacional) setSelectedForma(formaOperacional)
+                        setPreco(Number(e.target.value))
+                      }}
                     />
                   </div>
                 </div>
               )}
 
               {/* Preview de conversão e estoque */}
-              {selectedProduto && selectedForma && (
+              {selectedProduto && formaOperacional && (
                 <div className={cn(
                   "rounded-lg border px-3 py-2.5 text-xs",
                   estoqueInsuficiente
                     ? "border-red-200 bg-red-50 text-red-800"
                     : "border-zinc-100 bg-zinc-50 text-zinc-600"
                 )}>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    <span>
-                      {formatNumber(quantidade, 3)} {selectedForma.unidade} ×{" "}
-                      {formatNumber(selectedForma.fator_conversao, 3)} {selectedProduto.unidade_sigla} ={" "}
-                      <strong className="text-zinc-900">{formatNumber(quantidadeConvertida, 3)} {selectedProduto.unidade_sigla}</strong>
-                    </span>
-                    <span>Estoque: <strong className="text-zinc-900">{formatNumber(estoqueAtual, 3)} {selectedProduto.unidade_sigla}</strong></span>
-                    {estoqueInsuficiente && (
-                      <span className="font-semibold text-red-700">Estoque insuficiente</span>
+                  <div className="space-y-1">
+                    <p>
+                      {formatQtd(quantidade, formaOperacional.unidade)} baixa{quantidade !== 1 ? "m" : ""}{" "}
+                      <strong className="text-zinc-900">
+                        {formatQtd(quantidadeConvertida, selectedProduto.unidade_sigla)}
+                      </strong>{" "}
+                      do estoque
+                    </p>
+                    {estoqueInsuficiente ? (
+                      <p className="font-medium text-red-700">
+                        Você precisa de {formatNumber(quantidadeConvertida, 3)} {selectedProduto.unidade_sigla}.{" "}
+                        Disponível: {formatNumber(estoqueAtual, 3)} {selectedProduto.unidade_sigla}.{" "}
+                        Faltam: {formatNumber(quantidadeConvertida - estoqueAtual, 3)} {selectedProduto.unidade_sigla}.
+                      </p>
+                    ) : (
+                      <p>
+                        Disponível:{" "}
+                        <strong className="text-zinc-900">
+                          {formatNumber(estoqueAtual, 3)} {selectedProduto.unidade_sigla}
+                        </strong>
+                      </p>
                     )}
                   </div>
                 </div>
@@ -419,7 +485,7 @@ export default function PdvPage() {
                 <div className="flex items-center justify-between rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 text-xs">
                   <span className="text-zinc-500">Subtotal do item</span>
                   <span className="font-semibold text-zinc-900 tabular-nums">
-                    {formatCurrency(quantidade * preco)}
+                    {formatCurrency(quantidade * precoOperacional)}
                   </span>
                 </div>
               )}
@@ -427,7 +493,7 @@ export default function PdvPage() {
               <Button
                 size="sm"
                 icon={<Plus className="size-3.5" />}
-                disabled={!selectedProduto || estoqueInsuficiente || preco <= 0}
+                disabled={!selectedProduto || !formaOperacional || estoqueInsuficiente || precoOperacional <= 0}
                 onClick={handleAdicionarItem}
                 className="w-full"
               >
@@ -461,12 +527,16 @@ export default function PdvPage() {
                     {cart.map((item) => (
                       <div key={item.cartId} className="flex items-start gap-3 px-4 py-3">
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-zinc-900 truncate">{item.produto.nome}</p>
+                          <p className="text-xs font-medium text-zinc-900 truncate">
+                            {formatQtd(
+                              item.quantidadeInformada,
+                              item.formaVenda?.unidade ?? item.produto.unidade_sigla
+                            )}{" "}
+                            <span className="font-normal text-zinc-500">de</span>{" "}
+                            {item.produto.nome}
+                          </p>
                           <p className="text-[11px] text-zinc-400">
-                            {item.formaVenda
-                              ? `${formatNumber(item.quantidadeInformada, 3)} ${item.formaVenda.unidade}`
-                              : `${formatNumber(item.quantidadeInformada, 3)} ${item.produto.unidade_sigla}`}
-                            {" × "}{formatCurrency(item.precoUnitario)}
+                            {formatCurrency(item.precoUnitario)}/{(item.formaVenda?.unidade ?? item.produto.unidade_sigla).toLowerCase()}
                           </p>
                         </div>
                         <div className="flex items-center gap-1">
@@ -506,35 +576,11 @@ export default function PdvPage() {
             {cart.length > 0 && (
               <Card>
                 <CardContent className="space-y-4 pt-4">
-                  {/* Conta financeira */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-zinc-600">Conta de destino</label>
-                    {contasQuery.isLoading ? (
-                      <div className="h-9 animate-pulse rounded-md bg-zinc-100" />
-                    ) : (
-                      <select
-                        value={contaFinanceira}
-                        onChange={(e) => setContaFinanceira(e.target.value)}
-                        className={cn(
-                          "h-9 w-full rounded-md border px-3 text-sm bg-white text-zinc-900 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-colors",
-                          !contaFinanceira ? "border-red-200" : "border-zinc-300"
-                        )}
-                      >
-                        <option value="">Selecione a conta...</option>
-                        {contas.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.nome} ({c.tipo})
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-
                   {/* Forma de pagamento */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-zinc-600">Forma de pagamento</label>
                     <div className="grid grid-cols-4 gap-1">
-                      {FORMAS.map(({ value, label, emoji }) => (
+                      {FORMAS.map(({ value, label, icon: Icon }) => (
                         <button
                           key={value}
                           type="button"
@@ -546,11 +592,37 @@ export default function PdvPage() {
                               : "border-zinc-200 text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50"
                           )}
                         >
-                          <span className="block text-sm">{emoji}</span>
+                          <Icon className="mx-auto mb-1 size-3.5" />
                           {label}
                         </button>
                       ))}
                     </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-zinc-600">Destino</label>
+                    {configFinanceiraQuery.isLoading ? (
+                      <div className="h-9 animate-pulse rounded-md bg-zinc-100" />
+                    ) : contaFinanceira ? (
+                      <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-semibold text-zinc-900">
+                        {destinoPdv?.conta_nome}
+                        {!destinoPdv?.configurada && (
+                          <span className="ml-2 text-[11px] font-medium text-zinc-500">sugerida</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
+                          <div>
+                            <p className="font-medium">Nenhuma conta ativa para {formaPagamento}.</p>
+                            <Link className="underline" href="/configuracoes/financeiro">
+                              Abrir Configurações Financeiras
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Desconto */}

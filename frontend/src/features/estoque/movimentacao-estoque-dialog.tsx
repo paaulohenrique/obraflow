@@ -126,6 +126,18 @@ export function MovimentacaoEstoqueDialog({
         : quantidadeConvertida
   const estoqueDepois = estoqueAtual + (Number.isFinite(delta) ? delta : 0)
   const saldoNegativo = form.tipo === "SAIDA" && estoqueDepois < 0
+  const unidadeBase = selectedProduct?.unidade_sigla ?? "un"
+
+  const criarFormaMutation = useMutation({
+    mutationFn: (produtoId: string) => produtosService.garantirFormaVenda(produtoId),
+    onSuccess: (forma) => {
+      queryClient.invalidateQueries({ queryKey: ["estoque"] })
+      queryClient.invalidateQueries({ queryKey: ["estoque", "formas-venda", forma.produto_id, "movimentacao"] })
+      setForm((current) => ({ ...current, forma_venda: forma.id }))
+      toast.success("Forma de venda criada")
+    },
+    onError: (error) => toast.error(error),
+  })
 
   const validation = useMemo(() => {
     const errors: Record<string, string> = {}
@@ -144,10 +156,10 @@ export function MovimentacaoEstoqueDialog({
       errors.custo_unitario = "Custo não pode ser negativo."
     }
     if (saldoNegativo) {
-      errors.estoque = "Saldo insuficiente."
+      errors.estoque = `Você precisa de ${formatNumber(quantidadeConvertida, 3)} ${selectedProduct?.unidade_sigla ?? "un"}. Disponível: ${formatNumber(estoqueAtual, 3)} ${selectedProduct?.unidade_sigla ?? "un"}. Faltam: ${formatNumber(Math.abs(estoqueDepois), 3)} ${selectedProduct?.unidade_sigla ?? "un"}.`
     }
     return errors
-  }, [form, quantidade, saldoNegativo, selectedProduct])
+  }, [estoqueAtual, estoqueDepois, form, quantidade, quantidadeConvertida, saldoNegativo, selectedProduct])
 
   const isValid = Object.keys(validation).length === 0
 
@@ -207,7 +219,6 @@ export function MovimentacaoEstoqueDialog({
   }
 
   const showError = (key: string) => submitted && validation[key]
-  const unidadeBase = selectedProduct?.unidade_sigla ?? "un"
   const showForma = form.tipo === "ENTRADA" || form.tipo === "SAIDA"
   const showCusto = form.tipo === "ENTRADA" || form.tipo === "AJUSTE"
 
@@ -311,19 +322,38 @@ export function MovimentacaoEstoqueDialog({
 
               {showForma ? (
                 <Field label="Forma de venda">
-                  <select
-                    value={form.forma_venda}
-                    onChange={(event) => updateField("forma_venda", event.target.value)}
-                    disabled={mutation.isPending || !selectedProduct || formasQuery.isLoading}
-                    className="h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 disabled:bg-zinc-50 disabled:opacity-50"
-                  >
-                    <option value="">Unidade base ({unidadeBase})</option>
-                    {formas.map((forma) => (
-                      <option key={forma.id} value={forma.id}>
-                        {forma.nome} ({forma.unidade})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="space-y-2">
+                    <select
+                      value={form.forma_venda}
+                      onChange={(event) => updateField("forma_venda", event.target.value)}
+                      disabled={mutation.isPending || !selectedProduct || formasQuery.isLoading}
+                      className="h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 disabled:bg-zinc-50 disabled:opacity-50"
+                    >
+                      <option value="">Unidade base ({unidadeBase})</option>
+                      {formas.map((forma) => (
+                        <option key={forma.id} value={forma.id}>
+                          {forma.nome} ({forma.unidade})
+                        </option>
+                      ))}
+                    </select>
+                    {selectedProduct && !formasQuery.isLoading && formas.length === 0 && (
+                      <div className="rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-900">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span>Este produto ainda não possui forma de venda.</span>
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="outline"
+                            loading={criarFormaMutation.isPending}
+                            disabled={mutation.isPending || criarFormaMutation.isPending}
+                            onClick={() => criarFormaMutation.mutate(selectedProduct.id)}
+                          >
+                            Criar agora
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </Field>
               ) : (
                 <Field label="Unidade base">
@@ -392,7 +422,7 @@ export function MovimentacaoEstoqueDialog({
                 <strong className="mt-1 block text-zinc-900">
                   {form.quantidade
                     ? usaForma && selectedForma
-                      ? `${formatNumber(quantidade, 3)} ${selectedForma.unidade} x ${formatNumber(selectedForma.fator_conversao, 3)} ${unidadeBase} = ${formatNumber(quantidadeConvertida, 3)} ${unidadeBase}`
+                      ? `${formatNumber(quantidade, 3)} ${selectedForma.unidade} baixa${quantidade !== 1 ? "m" : ""} ${formatNumber(quantidadeConvertida, 3)} ${unidadeBase}`
                       : `${formatNumber(quantidade, 3)} ${unidadeBase}`
                     : "-"}
                 </strong>

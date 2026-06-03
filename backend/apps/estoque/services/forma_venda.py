@@ -53,6 +53,65 @@ def converter_quantidade(*, forma_venda: FormaVendaProduto, quantidade: Decimal)
 
 
 @transaction.atomic
+def garantir_forma_venda_padrao(
+    *,
+    user,
+    produto: Produto,
+    request=None,
+) -> FormaVendaProduto:
+    """Retorna uma forma ativa existente ou cria a forma operacional padrão."""
+    require_company(user)
+    company_id = user.company_id
+
+    if produto.company_id != company_id:
+        raise ValidationError({"produto": "Produto não pertence à empresa."})
+    if not produto.is_active:
+        raise ValidationError({"produto": "Produto inativo não pode receber formas de venda."})
+
+    produto = (
+        Produto.objects.select_for_update(of=("self",))
+        .select_related("unidade")
+        .get(pk=produto.pk, company_id=company_id, deleted_at__isnull=True)
+    )
+    forma_existente = (
+        FormaVendaProduto.objects.filter(
+            company_id=company_id,
+            produto=produto,
+            ativo=True,
+            deleted_at__isnull=True,
+        )
+        .order_by("-padrao", "nome")
+        .first()
+    )
+    if forma_existente:
+        return forma_existente
+
+    forma = FormaVendaProduto(
+        company=user.company,
+        produto=produto,
+        nome="Unidade",
+        codigo="",
+        unidade=produto.unidade.sigla,
+        fator_conversao=Decimal("1.000000"),
+        preco_venda=produto.preco_venda,
+        ativo=True,
+        padrao=True,
+        permite_fracionado=True,
+    )
+    _full_clean_or_400(forma)
+    forma.save()
+
+    create_audit_log(
+        user=user,
+        action=AuditLog.ACTION_CREATE,
+        entity=forma,
+        after=forma_venda_snapshot(forma),
+        request=request,
+    )
+    return forma
+
+
+@transaction.atomic
 def criar_forma_venda(
     *,
     user,

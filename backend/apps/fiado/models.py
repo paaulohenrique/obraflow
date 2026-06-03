@@ -464,6 +464,10 @@ class HistoricoFiado(BaseModel):
     EVENTO_CONTA_CANCELADA = "CONTA_CANCELADA"
     EVENTO_VENCIMENTO_ALTERADO = "VENCIMENTO_ALTERADO"
     EVENTO_OBSERVACAO_ALTERADA = "OBSERVACAO_ALTERADA"
+    EVENTO_COBRANCA_ENVIADA = "COBRANCA_ENVIADA"
+    EVENTO_COBRANCA_ENTREGUE = "COBRANCA_ENTREGUE"
+    EVENTO_COBRANCA_LIDA = "COBRANCA_LIDA"
+    EVENTO_COBRANCA_FALHOU = "COBRANCA_FALHOU"
     EVENTO_CHOICES = [
         (EVENTO_CONTA_CRIADA, "Conta criada"),
         (EVENTO_ITEM_ADICIONADO, "Item adicionado"),
@@ -474,6 +478,10 @@ class HistoricoFiado(BaseModel):
         (EVENTO_CONTA_CANCELADA, "Conta cancelada"),
         (EVENTO_VENCIMENTO_ALTERADO, "Vencimento alterado"),
         (EVENTO_OBSERVACAO_ALTERADA, "Observação alterada"),
+        (EVENTO_COBRANCA_ENVIADA, "Cobrança enviada"),
+        (EVENTO_COBRANCA_ENTREGUE, "Cobrança entregue"),
+        (EVENTO_COBRANCA_LIDA, "Cobrança lida"),
+        (EVENTO_COBRANCA_FALHOU, "Cobrança falhou"),
     ]
 
     objects = NoBulkMutationManager()

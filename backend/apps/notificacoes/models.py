@@ -83,13 +83,23 @@ class CanalNotificacao(BaseModel):
 class TemplateNotificacao(BaseModel):
     TIPO_COBRANCA_FIADO = "COBRANCA_FIADO"
     TIPO_LEMBRETE_VENCIMENTO = "LEMBRETE_VENCIMENTO"
+    TIPO_COBRANCA_1_DIA = "COBRANCA_1_DIA"
+    TIPO_COBRANCA_7_DIAS = "COBRANCA_7_DIAS"
+    TIPO_COBRANCA_15_DIAS = "COBRANCA_15_DIAS"
+    TIPO_COBRANCA_30_DIAS = "COBRANCA_30_DIAS"
     TIPO_CONFIRMACAO_PAGAMENTO = "CONFIRMACAO_PAGAMENTO"
+    TIPO_AGRADECIMENTO_PAGAMENTO = "AGRADECIMENTO_PAGAMENTO"
     TIPO_RESUMO_CONTA = "RESUMO_CONTA"
     TIPO_AVISO_ATRASO = "AVISO_ATRASO"
     TIPO_CHOICES = [
         (TIPO_COBRANCA_FIADO, "Cobrança de Fiado"),
         (TIPO_LEMBRETE_VENCIMENTO, "Lembrete de Vencimento"),
+        (TIPO_COBRANCA_1_DIA, "Cobrança 1 dia após vencimento"),
+        (TIPO_COBRANCA_7_DIAS, "Cobrança 7 dias após vencimento"),
+        (TIPO_COBRANCA_15_DIAS, "Cobrança 15 dias após vencimento"),
+        (TIPO_COBRANCA_30_DIAS, "Cobrança 30 dias após vencimento"),
         (TIPO_CONFIRMACAO_PAGAMENTO, "Confirmação de Pagamento"),
+        (TIPO_AGRADECIMENTO_PAGAMENTO, "Agradecimento de Pagamento"),
         (TIPO_RESUMO_CONTA, "Resumo da Conta"),
         (TIPO_AVISO_ATRASO, "Aviso de Conta Atrasada"),
     ]
@@ -163,13 +173,23 @@ class Notificacao(BaseModel):
 
     TIPO_COBRANCA_FIADO = "COBRANCA_FIADO"
     TIPO_LEMBRETE_VENCIMENTO = "LEMBRETE_VENCIMENTO"
+    TIPO_COBRANCA_1_DIA = "COBRANCA_1_DIA"
+    TIPO_COBRANCA_7_DIAS = "COBRANCA_7_DIAS"
+    TIPO_COBRANCA_15_DIAS = "COBRANCA_15_DIAS"
+    TIPO_COBRANCA_30_DIAS = "COBRANCA_30_DIAS"
     TIPO_CONFIRMACAO_PAGAMENTO = "CONFIRMACAO_PAGAMENTO"
+    TIPO_AGRADECIMENTO_PAGAMENTO = "AGRADECIMENTO_PAGAMENTO"
     TIPO_RESUMO_CONTA = "RESUMO_CONTA"
     TIPO_AVISO_ATRASO = "AVISO_ATRASO"
     TIPO_CHOICES = [
         (TIPO_COBRANCA_FIADO, "Cobrança de Fiado"),
         (TIPO_LEMBRETE_VENCIMENTO, "Lembrete de Vencimento"),
+        (TIPO_COBRANCA_1_DIA, "Cobrança 1 dia após vencimento"),
+        (TIPO_COBRANCA_7_DIAS, "Cobrança 7 dias após vencimento"),
+        (TIPO_COBRANCA_15_DIAS, "Cobrança 15 dias após vencimento"),
+        (TIPO_COBRANCA_30_DIAS, "Cobrança 30 dias após vencimento"),
         (TIPO_CONFIRMACAO_PAGAMENTO, "Confirmação de Pagamento"),
+        (TIPO_AGRADECIMENTO_PAGAMENTO, "Agradecimento de Pagamento"),
         (TIPO_RESUMO_CONTA, "Resumo da Conta"),
         (TIPO_AVISO_ATRASO, "Aviso de Conta Atrasada"),
     ]

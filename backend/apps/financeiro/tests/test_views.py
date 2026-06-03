@@ -13,6 +13,7 @@ LANCAMENTOS_URL = "/api/v1/financeiro/lancamentos/"
 CONTAS_PAGAR_URL = "/api/v1/financeiro/contas-pagar/"
 CAIXAS_URL = "/api/v1/financeiro/caixas/"
 DASHBOARD_URL = "/api/v1/financeiro/dashboard/"
+CONFIG_URL = "/api/v1/financeiro/configuracao-operacional/"
 
 
 def detail(base_url, pk):
@@ -144,6 +145,29 @@ class TestFinanceiroViews:
         reabrir = admin_client.post(f"{detail(CAIXAS_URL, caixa_id)}reabrir/", data={}, format="json")
         assert reabrir.status_code == 200
         assert reabrir.data["status"] == "ABERTO"
+
+    def test_configuracao_operacional_api(self, manager_client, viewer_client, banco, caixa):
+        leitura = viewer_client.get(CONFIG_URL)
+        assert leitura.status_code == 200
+        assert "destinos_pdv" in leitura.data
+
+        update = manager_client.patch(
+            f"{CONFIG_URL}atualizar/",
+            data={
+                "conta_pix": str(banco.pk),
+                "conta_dinheiro": str(caixa.pk),
+            },
+            format="json",
+        )
+
+        assert update.status_code == 200
+        assert str(update.data["conta_pix"]) == str(banco.pk)
+        assert str(update.data["conta_dinheiro"]) == str(caixa.pk)
+
+        leitura_final = viewer_client.get(CONFIG_URL)
+        destinos = {item["forma_pagamento"]: item for item in leitura_final.data["destinos_pdv"]}
+        assert str(destinos["PIX"]["conta"]) == str(banco.pk)
+        assert str(destinos["DINHEIRO"]["conta"]) == str(caixa.pk)
 
     def test_permissions_tenant_e_company_payload(
         self,

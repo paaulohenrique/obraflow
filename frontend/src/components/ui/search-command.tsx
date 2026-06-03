@@ -17,6 +17,7 @@ import {
   Settings,
   ShoppingCart,
   BarChart3,
+  MessageCircle,
 } from "lucide-react"
 import { clientesService } from "@/services/clientes.service"
 import { estoqueService } from "@/services/estoque.service"
@@ -33,6 +34,7 @@ const navItems = [
   { label: "Clientes", href: "/clientes", icon: Users },
   { label: "PDV", href: "/pdv", icon: ShoppingCart },
   { label: "Fiado", href: "/fiado", icon: HandCoins },
+  { label: "Cobranças", href: "/cobrancas", icon: MessageCircle },
   { label: "Estoque", href: "/estoque", icon: Package },
   { label: "Financeiro", href: "/financeiro", icon: Wallet },
   { label: "Boletos", href: "/boletos", icon: Landmark },

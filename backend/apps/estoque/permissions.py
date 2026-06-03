@@ -2,8 +2,8 @@ from rest_framework.permissions import BasePermission
 
 from apps.core.exceptions import require_company
 
-SAFE_ACTIONS = {"list", "retrieve", "baixo_estoque", "movimentacoes"}
-MANAGER_CATALOG_ACTIONS = {"create", "update", "partial_update", "ativar", "inativar"}
+SAFE_ACTIONS = {"list", "retrieve", "baixo_estoque", "movimentacoes", "auditoria_operacional"}
+MANAGER_CATALOG_ACTIONS = {"create", "update", "partial_update", "ativar", "inativar", "garantir_forma_venda"}
 ADMIN_ACTIONS = {"destroy"}
 MANAGER_MOVEMENT_ACTIONS = {"entrada", "ajuste", "devolucao", "cancelar"}
 SELLER_MOVEMENT_ACTIONS = {"saida"}

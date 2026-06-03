@@ -176,6 +176,13 @@ def executar_envio(
         notificacao.save(
             update_fields=["status", "erro_codigo", "erro_mensagem", "failed_at", "updated_at"]
         )
+        from .fiado_timeline import registrar_evento_cobranca_fiado
+
+        registrar_evento_cobranca_fiado(
+            notificacao=notificacao,
+            status=Notificacao.STATUS_FALHOU,
+            extra={"erro_codigo": exc.code, "erro_mensagem": exc.message},
+        )
         logger.error(
             "Notificacao %s falhou: [%s] %s",
             notificacao.pk,
@@ -189,6 +196,12 @@ def executar_envio(
     notificacao.sent_at = timezone.now()
     notificacao.save(
         update_fields=["status", "provider_message_id", "sent_at", "updated_at"]
+    )
+    from .fiado_timeline import registrar_evento_cobranca_fiado
+
+    registrar_evento_cobranca_fiado(
+        notificacao=notificacao,
+        status=Notificacao.STATUS_ENVIADA,
     )
     logger.info(
         "Notificacao %s enviada wamid=%s",
@@ -229,7 +242,7 @@ def enviar_cobranca_fiado(
         ).latest("created_at")
 
     cliente = conta.cliente
-    telefone = getattr(cliente, "telefone", None) or ""
+    telefone = getattr(cliente, "whatsapp", None) or getattr(cliente, "telefone", None) or ""
     if not telefone:
         raise NotificacaoError(
             "SEM_TELEFONE",
@@ -246,8 +259,11 @@ def enviar_cobranca_fiado(
     )
 
     payload = {
+        "conta_id": str(conta.pk),
+        "cliente_id": str(cliente.pk),
         "valor_restante": str(conta.valor_restante),
         "data_vencimento": data_venc,
+        "dias_atraso": conta.dias_atraso,
         "componentes": componentes_cobranca_fiado(
             cliente_nome=cliente.nome,
             valor_restante=conta.valor_restante,

@@ -4,7 +4,7 @@ import pytest
 from rest_framework.exceptions import ValidationError
 
 from apps.core.models import AuditLog
-from apps.estoque.models import MovimentacaoEstoque, Produto
+from apps.estoque.models import FormaVendaProduto, MovimentacaoEstoque, Produto
 from apps.estoque.services import (
     ajuste_estoque,
     ativar_produto,
@@ -48,6 +48,11 @@ class TestProdutoServices:
         assert produto.company_id == admin_user.company_id
         assert produto.estoque_atual == Decimal("0.000")
         assert produto.sku == "TIJ-8"
+        forma = FormaVendaProduto.objects.get(produto=produto, ativo=True)
+        assert forma.nome == "Unidade"
+        assert forma.fator_conversao == Decimal("1.000000")
+        assert forma.preco_venda == Decimal("1.10")
+        assert forma.padrao is True
         assert AuditLog.objects.filter(
             entity_type="Produto",
             entity_id=produto.pk,

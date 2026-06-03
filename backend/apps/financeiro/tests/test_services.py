@@ -13,6 +13,7 @@ from apps.fiado.services import abrir_conta_fiado, adicionar_item_fiado, cancela
 from apps.financeiro.models import (
     CaixaDiario,
     CategoriaFinanceira,
+    ConfiguracaoFinanceiraOperacional,
     ContaFinanceira,
     ContaPagar,
     LancamentoFinanceiro,
@@ -20,6 +21,7 @@ from apps.financeiro.models import (
 from apps.financeiro.services import (
     abrir_caixa,
     ajustar_saldo_conta,
+    atualizar_configuracao_financeira_operacional,
     cancelar_conta_pagar,
     cancelar_lancamento_financeiro,
     criar_categoria_financeira,
@@ -28,10 +30,12 @@ from apps.financeiro.services import (
     criar_conta_pagar,
     criar_lancamento_financeiro,
     fechar_caixa,
+    get_or_create_configuracao_financeira_operacional,
     inativar_categoria_financeira,
     inativar_conta_financeira,
     pagar_conta_pagar,
     reabrir_caixa,
+    resolver_conta_operacional_pdv,
 )
 from apps.financeiro.services.integracao_fiado import registrar_recebimento_fiado
 from .conftest import make_categoria_financeira, make_conta_financeira, make_fornecedor
@@ -95,6 +99,34 @@ class TestContaFinanceiraServices:
         )
         with pytest.raises(ValidationError, match="saldo"):
             inativar_conta_financeira(user=admin_user, conta=com_saldo)
+
+    def test_configuracao_operacional_resolve_conta_do_pdv(self, admin_user, empresa_a):
+        conta_pix = criar_conta_financeira(
+            user=admin_user,
+            data={"nome": "Conta PIX Principal", "tipo": ContaFinanceira.TIPO_BANCO},
+        )
+        caixa = criar_conta_financeira(
+            user=admin_user,
+            data={"nome": "Caixa Principal", "tipo": ContaFinanceira.TIPO_CAIXA},
+        )
+        config = get_or_create_configuracao_financeira_operacional(company_id=empresa_a.pk)
+
+        atualizar_configuracao_financeira_operacional(
+            user=admin_user,
+            config=config,
+            data={"conta_pix": conta_pix, "conta_dinheiro": caixa},
+        )
+
+        config.refresh_from_db()
+        assert ConfiguracaoFinanceiraOperacional.objects.filter(company=empresa_a).count() == 1
+        assert resolver_conta_operacional_pdv(
+            company_id=empresa_a.pk,
+            forma_pagamento=LancamentoFinanceiro.FORMA_PIX,
+        ) == conta_pix
+        assert resolver_conta_operacional_pdv(
+            company_id=empresa_a.pk,
+            forma_pagamento=LancamentoFinanceiro.FORMA_DINHEIRO,
+        ) == caixa
 
 
 @pytest.mark.django_db

@@ -315,7 +315,7 @@ export default function ProdutoDetalhePage() {
                       <Td className="font-mono text-xs text-zinc-500">{forma.codigo || "-"}</Td>
                       <Td>{forma.unidade}</Td>
                       <Td className="text-right tabular-nums">
-                        1 {forma.unidade} = {formatNumber(forma.fator_conversao, 3)} {produto.unidade_sigla}
+                        1 {forma.unidade} baixa {formatNumber(forma.fator_conversao, 3)} {produto.unidade_sigla}
                       </Td>
                       <Td className="text-right tabular-nums">{formatCurrency(forma.preco_venda)}</Td>
                       <Td>

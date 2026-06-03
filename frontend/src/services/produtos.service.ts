@@ -5,7 +5,9 @@ import type {
   PaginatedResponse,
   PaginationParams,
   Produto,
+  ProdutoAuditoriaOperacional,
   ProdutoPayload,
+  FormaVendaProduto,
   UnidadeMedida,
   UnidadeMedidaPayload,
 } from "@/types"
@@ -23,6 +25,13 @@ export const produtosService = {
   async lowStock(params?: PaginationParams) {
     const response = await api.get<PaginatedResponse<Produto>>(
       `/estoque/produtos/baixo-estoque/${toQueryString(params)}`
+    )
+    return response.data
+  },
+
+  async auditoriaOperacional() {
+    const response = await api.get<ProdutoAuditoriaOperacional>(
+      "/estoque/produtos/auditoria-operacional/"
     )
     return response.data
   },
@@ -49,6 +58,13 @@ export const produtosService = {
 
   async inativar(id: string) {
     const response = await api.post<Produto>(`/estoque/produtos/${id}/inativar/`)
+    return response.data
+  },
+
+  async garantirFormaVenda(id: string) {
+    const response = await api.post<FormaVendaProduto>(
+      `/estoque/produtos/${id}/garantir-forma-venda/`
+    )
     return response.data
   },
 
