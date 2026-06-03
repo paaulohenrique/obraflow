@@ -97,7 +97,7 @@ export default function ProdutoDetalhePage() {
     return (
       <Shell>
         <Topbar title="Produto" />
-        <main className="flex-1 space-y-5 p-6">
+        <main className="flex-1 space-y-5 p-4 md:p-6">
           <Skeleton className="h-32 w-full" />
           <Skeleton className="h-80 w-full" />
         </main>
@@ -161,7 +161,7 @@ export default function ProdutoDetalhePage() {
         }
       />
 
-      <main className="flex-1 space-y-5 p-6">
+      <main className="flex-1 space-y-5 p-4 md:p-6">
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
           <Card>
             <CardContent className="space-y-4 py-5">

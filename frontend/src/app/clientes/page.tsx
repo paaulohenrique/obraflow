@@ -86,19 +86,19 @@ export default function ClientesPage() {
         onEdit={(c) => { setDrawerCliente(null); setEditCliente(c) }}
       />
 
-      <main className="flex-1 p-6 space-y-5">
+      <main className="flex-1 p-4 md:p-6 space-y-5">
         {/* Métricas do Cabeçalho */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <div className="bg-white border border-zinc-200 rounded-xl px-4 py-3 shadow-sm">
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Clientes Ativos</p>
             <p className="text-lg font-bold text-zinc-900 mt-1">{total}</p>
           </div>
           <div className="bg-white border border-zinc-200 rounded-xl px-4 py-3 shadow-sm">
-            <p className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Inadimplentes</p>
+            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Inadimplentes</p>
             <p className="text-lg font-bold text-red-500 mt-1">{inadimplentesQuery.data?.count ?? 0}</p>
           </div>
           <div className="bg-white border border-zinc-200 rounded-xl px-4 py-3 shadow-sm">
-            <p className="text-[10px] font-bold text-zinc-450 uppercase tracking-wider">Com Fiado Aberto</p>
+            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Com Fiado Aberto</p>
             <p className="text-lg font-bold text-orange-500 mt-1">{fiadoDashboardQuery.data?.contas_abertas ?? 0}</p>
           </div>
         </div>
@@ -154,6 +154,7 @@ export default function ClientesPage() {
               clientes={clientes}
               loading={clientesQuery.isLoading}
               onClienteClick={setDrawerCliente}
+              onCreateClick={() => setOpen(true)}
             />
           )}
 

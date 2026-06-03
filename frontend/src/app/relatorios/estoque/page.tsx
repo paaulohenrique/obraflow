@@ -48,7 +48,7 @@ export default function RelatorioEstoquePage() {
   return (
     <Shell>
       <Topbar title="Relatório de Estoque" subtitle="Valor estimado, produtos críticos, giro e itens parados" />
-      <main className="flex-1 space-y-5 p-6">
+      <main className="flex-1 space-y-5 p-4 md:p-6">
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 bg-white p-4">
           <label className="w-40 text-xs font-medium text-zinc-600">
             Período inicial
@@ -75,12 +75,12 @@ export default function RelatorioEstoquePage() {
         {isError ? (
           <Card><CardContent className="py-8"><ErrorState onRetry={() => refetch()} /></CardContent></Card>
         ) : isLoading ? (
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => <StatCard key={index} label="" value="" loading />)}
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard label="Valor do Estoque" value={formatCurrency(data?.kpis.valor_estimado_estoque)} icon={<Boxes className="size-4" />} />
               <StatCard label="Produtos Críticos" value={String(data?.kpis.produtos_criticos ?? 0)} accent={(data?.kpis.produtos_criticos ?? 0) > 0} icon={<AlertTriangle className="size-4" />} />
               <StatCard label="Sem Movimentação" value={String(data?.kpis.produtos_sem_movimentacao ?? 0)} accent={(data?.kpis.produtos_sem_movimentacao ?? 0) > 0} icon={<Package className="size-4" />} />

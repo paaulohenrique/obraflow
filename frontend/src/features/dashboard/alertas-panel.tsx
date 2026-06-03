@@ -12,7 +12,7 @@ import { useDashboardResumo } from "./use-dashboard-resumo"
 const iconBg: Record<"error" | "warning" | "info", string> = {
   error: "bg-red-50 text-red-500",
   warning: "bg-yellow-50 text-yellow-600",
-  info: "bg-blue-50 text-blue-500",
+  info: "bg-orange-50 text-orange-600",
 }
 
 export function AlertasPanel() {

@@ -2,11 +2,12 @@
 
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Ban } from "lucide-react"
+import { Ban, Landmark } from "lucide-react"
 import * as Dialog from "@radix-ui/react-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
+import { SkeletonTable } from "@/components/ui/skeleton"
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table"
 import { useApiToast } from "@/hooks/use-api-toast"
 import { useCurrentUser } from "@/hooks/use-current-user"
@@ -62,20 +63,16 @@ export function LancamentosTable({ lancamentos, loading }: LancamentosTableProps
   })
 
   if (loading) {
-    return (
-      <div className="space-y-2 p-5">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="h-11 w-full" />
-        ))}
-      </div>
-    )
+    return <SkeletonTable rows={8} cols={6} />
   }
 
   if (lancamentos.length === 0) {
     return (
-      <div className="py-14 text-center text-sm text-zinc-400">
-        Nenhum lançamento encontrado.
-      </div>
+      <EmptyState
+        icon={<Landmark className="size-5" />}
+        title="Nenhum lançamento encontrado"
+        description="Receitas, despesas, baixas de fiado e contas pagas aparecerão neste histórico financeiro."
+      />
     )
   }
 

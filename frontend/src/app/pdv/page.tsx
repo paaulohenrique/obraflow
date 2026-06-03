@@ -291,9 +291,9 @@ export default function PdvPage() {
         />
       )}
 
-      <main className="flex-1 p-6 space-y-4">
+      <main className="flex-1 p-4 md:p-6 space-y-4">
         {/* KPIs do dia */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Vendas hoje" value={`${dashQuery.data?.count_hoje ?? 0}`} />
           <StatCard label="Faturado hoje" value={formatCurrency(dashQuery.data?.total_hoje)} accent />
           <StatCard label="Vendas no mês" value={`${dashQuery.data?.count_mes ?? 0}`} />

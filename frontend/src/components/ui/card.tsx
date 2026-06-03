@@ -4,7 +4,7 @@ export function Card({ className, children, ...props }: React.HTMLAttributes<HTM
   return (
     <div
       className={cn(
-        "bg-white border border-zinc-200 rounded-lg shadow-xs",
+        "overflow-hidden rounded-lg border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]",
         className
       )}
       {...props}
@@ -16,7 +16,7 @@ export function Card({ className, children, ...props }: React.HTMLAttributes<HTM
 
 export function CardHeader({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("px-5 py-4 border-b border-zinc-100", className)} {...props}>
+    <div className={cn("border-b border-zinc-100 bg-white px-5 py-4", className)} {...props}>
       {children}
     </div>
   )
@@ -32,7 +32,7 @@ export function CardContent({ className, children, ...props }: React.HTMLAttribu
 
 export function CardFooter({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("px-5 py-3 border-t border-zinc-100 bg-zinc-50/50 rounded-b-lg", className)} {...props}>
+    <div className={cn("border-t border-zinc-100 bg-zinc-50/70 px-5 py-3", className)} {...props}>
       {children}
     </div>
   )

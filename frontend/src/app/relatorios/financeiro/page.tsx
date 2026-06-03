@@ -66,7 +66,7 @@ export default function RelatorioFinanceiroPage() {
   return (
     <Shell>
       <Topbar title="Relatório Financeiro" subtitle="Entradas, saídas, saldo e contas" />
-      <main className="flex-1 space-y-5 p-6">
+      <main className="flex-1 space-y-5 p-4 md:p-6">
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 bg-white p-4">
           <label className="w-40 text-xs font-medium text-zinc-600">
             Período inicial
@@ -97,12 +97,12 @@ export default function RelatorioFinanceiroPage() {
         {isError ? (
           <Card><CardContent className="py-8"><ErrorState onRetry={() => refetch()} /></CardContent></Card>
         ) : isLoading ? (
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => <StatCard key={index} label="" value="" loading />)}
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard label="Entradas" value={formatCurrency(data?.kpis.entradas)} icon={<TrendingUp className="size-4" />} />
               <StatCard label="Saídas" value={formatCurrency(data?.kpis.saidas)} accent={toNumber(data?.kpis.saidas) > 0} icon={<TrendingDown className="size-4" />} />
               <StatCard label="Saldo" value={formatCurrency(data?.kpis.saldo)} accent={toNumber(data?.kpis.saldo) > 0} icon={<Wallet className="size-4" />} />

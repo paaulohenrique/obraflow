@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   AlertTriangle,
   CalendarClock,
-  CreditCard,
   Edit3,
   ExternalLink,
   FileDown,
@@ -100,7 +99,7 @@ export function ClienteActionDrawer({ cliente, onClose, onEdit }: ClienteActionD
         <Dialog.Overlay className="fixed inset-0 z-40 bg-zinc-950/20 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0" />
         <Dialog.Content
           className={cn(
-            "fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-white shadow-2xl border-l border-zinc-150",
+            "fixed right-0 top-0 z-50 flex h-full w-full max-w-md flex-col bg-white shadow-2xl border-l border-zinc-200",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
             "duration-200"
@@ -150,7 +149,7 @@ export function ClienteActionDrawer({ cliente, onClose, onEdit }: ClienteActionD
               </div>
 
               {/* Dossier Document Info */}
-              <div className="mt-5 rounded-lg border border-zinc-150 bg-zinc-50/50 p-3 space-y-2.5 text-xs">
+              <div className="mt-5 rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 space-y-2.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-zinc-400">Documento</span>
                   <span className="font-mono font-semibold text-zinc-800">{formatDocument(cliente.cpf_cnpj)}</span>
@@ -203,9 +202,9 @@ export function ClienteActionDrawer({ cliente, onClose, onEdit }: ClienteActionD
                       {formatCurrency(cliente.limite_credito)}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-zinc-150 p-3 bg-zinc-50/30">
+                  <div className="rounded-lg border border-zinc-200 p-3 bg-zinc-50/30">
                     <p className="text-[10px] text-zinc-400 font-medium">Saldo Devedor</p>
-                    <p className={cn("mt-0.5 text-base font-bold tabular-nums", saldo > 0 ? "text-red-650" : "text-zinc-400")}>
+                    <p className={cn("mt-0.5 text-base font-bold tabular-nums", saldo > 0 ? "text-red-600" : "text-zinc-400")}>
                       {formatCurrency(cliente.saldo_devedor)}
                     </p>
                   </div>
@@ -220,7 +219,7 @@ export function ClienteActionDrawer({ cliente, onClose, onEdit }: ClienteActionD
                       </p>
                     </div>
                     {limite > 0 && (
-                      <span className="text-xs font-semibold bg-zinc-100 text-zinc-650 px-2 py-0.5 rounded">
+                      <span className="text-xs font-semibold bg-zinc-100 text-zinc-700 px-2 py-0.5 rounded">
                         {Math.round(usagePct)}% utilizado
                       </span>
                     )}
@@ -244,7 +243,7 @@ export function ClienteActionDrawer({ cliente, onClose, onEdit }: ClienteActionD
             {/* Aviso bloqueado */}
             {fiadoBloqueado && (
               <div className="mx-6 mt-4 flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50/50 px-3.5 py-3">
-                <AlertTriangle className="mt-0.5 size-4 flex-shrink-0 text-red-650" />
+                <AlertTriangle className="mt-0.5 size-4 flex-shrink-0 text-red-600" />
                 <p className="text-xs font-medium text-red-900 leading-normal">{fiadoTooltip}</p>
               </div>
             )}
@@ -270,7 +269,7 @@ export function ClienteActionDrawer({ cliente, onClose, onEdit }: ClienteActionD
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] text-zinc-400 font-medium">Saldo Restante</p>
-                      <p className="text-base font-extrabold tabular-nums text-red-650">{formatCurrency(contaAberta.valor_restante)}</p>
+                      <p className="text-base font-extrabold tabular-nums text-red-600">{formatCurrency(contaAberta.valor_restante)}</p>
                       <p className="mt-0.5 text-[10px] text-zinc-400 font-mono">Total {formatCurrency(contaAberta.valor_total)}</p>
                     </div>
                   </div>
@@ -325,13 +324,13 @@ export function ClienteActionDrawer({ cliente, onClose, onEdit }: ClienteActionD
                   ))}
                 </div>
               ) : contasFechadas.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-zinc-200 p-4 text-center text-xs text-zinc-450">
+                <div className="rounded-lg border border-dashed border-zinc-200 p-4 text-center text-xs text-zinc-500">
                   Nenhuma conta finalizada registrada no histórico.
                 </div>
               ) : (
                 <div className="space-y-3">
                   {contasFechadas.map((conta) => (
-                    <div key={conta.id} className="rounded-lg border border-zinc-150 p-3 bg-white hover:border-zinc-300 transition-colors">
+                    <div key={conta.id} className="rounded-lg border border-zinc-200 p-3 bg-white hover:border-zinc-300 transition-colors">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="text-xs font-bold text-zinc-900">
@@ -378,7 +377,7 @@ export function ClienteActionDrawer({ cliente, onClose, onEdit }: ClienteActionD
           </div>
 
           {/* Ações fixas no rodapé */}
-          <div className="border-t border-zinc-150 px-6 py-4 space-y-2 bg-zinc-50/50">
+          <div className="border-t border-zinc-200 px-6 py-4 space-y-2 bg-zinc-50/50">
             <Button
               className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold"
               size="sm"

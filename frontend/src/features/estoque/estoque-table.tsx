@@ -5,7 +5,8 @@ import { AlertTriangle, ArrowRight, PackageOpen } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
+import { SkeletonTable } from "@/components/ui/skeleton"
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table"
 import { cn, formatCurrency, formatDate } from "@/lib/utils"
 import { formatNumber, toNumber } from "@/lib/format"
@@ -16,6 +17,7 @@ interface EstoqueTableProps {
   produtos: Produto[]
   formasByProduto?: Record<string, FormaVendaProduto[]>
   loading?: boolean
+  onCreateClick?: () => void
 }
 
 function formatRelativeDate(dateStr: string) {
@@ -40,7 +42,7 @@ function formatRelativeDate(dateStr: string) {
   }
 }
 
-export function EstoqueTable({ produtos, formasByProduto = {}, loading }: EstoqueTableProps) {
+export function EstoqueTable({ produtos, formasByProduto = {}, loading, onCreateClick }: EstoqueTableProps) {
   const queryClient = useQueryClient()
 
   const handlePrefetch = (id: string) => {
@@ -62,24 +64,18 @@ export function EstoqueTable({ produtos, formasByProduto = {}, loading }: Estoqu
   }
 
   if (loading) {
-    return (
-      <div className="space-y-2 p-5">
-        {Array.from({ length: 8 }).map((_, index) => (
-          <Skeleton key={index} className="h-12 w-full" />
-        ))}
-      </div>
-    )
+    return <SkeletonTable rows={8} cols={6} />
   }
 
   if (produtos.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-zinc-50 border border-zinc-150 text-zinc-400">
-          <PackageOpen className="size-5" />
-        </div>
-        <p className="text-sm font-semibold text-zinc-700">Nenhum produto encontrado</p>
-        <p className="mt-1 text-xs text-zinc-400">Ajuste os filtros de busca ou de categorias.</p>
-      </div>
+      <EmptyState
+        icon={<PackageOpen className="size-5" />}
+        title="Nenhum produto cadastrado"
+        description="Cadastre produtos, categoria e unidade base para controlar estoque, PDV e formas de venda."
+        actionLabel={onCreateClick ? "Cadastrar produto" : undefined}
+        onAction={onCreateClick}
+      />
     )
   }
 
@@ -133,7 +129,7 @@ export function EstoqueTable({ produtos, formasByProduto = {}, loading }: Estoqu
                         </>
                       )}
                       <span>•</span>
-                      <span className="rounded bg-zinc-100 px-1 py-0.2 text-[9px] text-zinc-500 uppercase">{produto.categoria_nome}</span>
+                      <span className="rounded bg-zinc-100 px-1 py-0.5 text-[9px] text-zinc-500 uppercase">{produto.categoria_nome}</span>
                     </span>
                   </div>
                 </div>
@@ -143,9 +139,9 @@ export function EstoqueTable({ produtos, formasByProduto = {}, loading }: Estoqu
               <Td className="text-right py-3">
                 <span className={cn(
                   "font-bold tabular-nums block text-xs",
-                  semEstoque ? "text-red-650" : baixo ? "text-yellow-600" : "text-zinc-900"
+                  semEstoque ? "text-red-600" : baixo ? "text-yellow-600" : "text-zinc-900"
                 )}>
-                  {formatNumber(produto.estoque_atual, 2)} <span className="text-[10px] font-normal text-zinc-450">{produto.unidade_sigla}</span>
+                  {formatNumber(produto.estoque_atual, 2)} <span className="text-[10px] font-normal text-zinc-500">{produto.unidade_sigla}</span>
                 </span>
                 <span className="text-[10px] text-zinc-400 block mt-0.5">
                   Mínimo: {formatNumber(produto.estoque_minimo, 1)}

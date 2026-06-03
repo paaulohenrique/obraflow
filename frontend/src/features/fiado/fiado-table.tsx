@@ -5,7 +5,8 @@ import { ChevronRight, HandCoins } from "lucide-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
+import { SkeletonTable } from "@/components/ui/skeleton"
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table"
 import { formatCurrency, formatDate, formatDocument, initials } from "@/lib/utils"
 import { fiadoService } from "@/services/fiado.service"
@@ -51,24 +52,16 @@ export function FiadoTable({ contas, loading }: FiadoTableProps) {
   }
 
   if (loading) {
-    return (
-      <div className="space-y-2 p-5">
-        {Array.from({ length: 8 }).map((_, index) => (
-          <Skeleton key={index} className="h-12 w-full" />
-        ))}
-      </div>
-    )
+    return <SkeletonTable rows={8} cols={6} />
   }
 
   if (contas.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-zinc-100">
-          <HandCoins className="size-5 text-zinc-400" />
-        </div>
-        <p className="text-sm font-medium text-zinc-700">Nenhuma conta fiado encontrada</p>
-        <p className="mt-1 text-xs text-zinc-400">Ajuste os filtros e tente novamente.</p>
-      </div>
+      <EmptyState
+        icon={<HandCoins className="size-5" />}
+        title="Nenhuma conta fiado encontrada"
+        description="As contas fiado aparecem aqui quando uma venda a prazo é registrada para um cliente."
+      />
     )
   }
 

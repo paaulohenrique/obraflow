@@ -65,7 +65,7 @@ export default function RelatorioFiadoPage() {
   return (
     <Shell>
       <Topbar title="Relatório de Fiado" subtitle="Saldos em aberto, vencidos e maiores devedores" />
-      <main className="flex-1 space-y-5 p-6">
+      <main className="flex-1 space-y-5 p-4 md:p-6">
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-zinc-200 bg-white p-4">
           <label className="w-40 text-xs font-medium text-zinc-600">
             Período inicial
@@ -119,12 +119,12 @@ export default function RelatorioFiadoPage() {
         {isError ? (
           <Card><CardContent className="py-8"><ErrorState onRetry={() => refetch()} /></CardContent></Card>
         ) : isLoading ? (
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => <StatCard key={index} label="" value="" loading />)}
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard label="Total em Aberto" value={formatCurrency(data?.kpis.total_em_aberto)} icon={<HandCoins className="size-4" />} />
               <StatCard label="Total Vencido" value={formatCurrency(data?.kpis.total_vencido)} accent icon={<AlertTriangle className="size-4" />} />
               <StatCard label="Recebido no Mês" value={formatCurrency(data?.kpis.recebido_no_mes)} icon={<Wallet className="size-4" />} />

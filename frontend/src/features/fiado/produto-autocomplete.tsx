@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Barcode, Check, ChevronLeft, ChevronRight, CornerDownLeft, Package, Search } from "lucide-react"
+import { Barcode, Check, ChevronLeft, ChevronRight, CornerDownLeft, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
@@ -29,7 +29,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   return (
     <>
       {text.slice(0, index)}
-      <mark className="rounded-sm bg-orange-100 px-0.5 text-orange-850 font-semibold">{text.slice(index, index + trimmed.length)}</mark>
+      <mark className="rounded-sm bg-orange-100 px-0.5 text-orange-800 font-semibold">{text.slice(index, index + trimmed.length)}</mark>
       {text.slice(index + trimmed.length)}
     </>
   )
@@ -144,7 +144,7 @@ export function ProdutoAutocomplete({ value, disabled, error, onSelect, onClear 
           </span>
         ) : (
           <div className="hidden md:flex items-center gap-1.5 text-[9px] text-zinc-400 font-mono select-none">
-            <kbd className="bg-zinc-100 border border-zinc-200 px-1 py-0.2 rounded font-mono text-[8px] font-bold">F2</kbd>
+            <kbd className="bg-zinc-100 border border-zinc-200 px-1 py-0.5 rounded font-mono text-[8px] font-bold">F2</kbd>
             <span>Buscar</span>
           </div>
         )}
@@ -203,8 +203,8 @@ export function ProdutoAutocomplete({ value, disabled, error, onSelect, onClear 
                         <Highlight text={produto.nome} query={debouncedSearch} />
                       </p>
                       
-                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-zinc-450">
-                        <span className="font-mono bg-zinc-50 px-1 py-0.2 rounded border border-zinc-150">{produto.sku || "sem SKU"}</span>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-zinc-500">
+                        <span className="font-mono bg-zinc-50 px-1 py-0.5 rounded border border-zinc-200">{produto.sku || "sem SKU"}</span>
                         {produto.codigo_barras && (
                           <span className="flex items-center gap-0.5 font-mono">
                             <Barcode className="size-3 text-zinc-400" />
@@ -214,7 +214,7 @@ export function ProdutoAutocomplete({ value, disabled, error, onSelect, onClear 
                         <span>•</span>
                         <span className={cn(
                           "font-semibold",
-                          semEstoque ? "text-red-650" : baixoEstoque ? "text-yellow-650" : "text-zinc-600"
+                          semEstoque ? "text-red-600" : baixoEstoque ? "text-yellow-600" : "text-zinc-600"
                         )}>
                           Estoque: {formatNumber(produto.estoque_atual, 2)} {produto.unidade_sigla}
                         </span>
@@ -240,7 +240,7 @@ export function ProdutoAutocomplete({ value, disabled, error, onSelect, onClear 
           )}
 
           {/* Footer controls & Keyboard shortcuts guide */}
-          <div className="flex items-center justify-between border-t border-zinc-100 bg-zinc-50/80 px-3.5 py-2.5 text-[10px] text-zinc-450 font-medium">
+          <div className="flex items-center justify-between border-t border-zinc-100 bg-zinc-50/80 px-3.5 py-2.5 text-[10px] text-zinc-500 font-medium">
             <div className="flex items-center gap-3">
               {totalPages > 1 && (
                 <div className="flex items-center gap-1.5">
@@ -280,9 +280,9 @@ export function ProdutoAutocomplete({ value, disabled, error, onSelect, onClear 
             </div>
 
             <div className="hidden sm:flex items-center gap-2.5 font-mono text-[9px] text-zinc-400 select-none">
-              <span><kbd className="bg-zinc-150 px-1 py-0.2 rounded font-bold">↑↓</kbd> Navegar</span>
-              <span><kbd className="bg-zinc-150 px-1 py-0.2 rounded font-bold">Enter</kbd> Confirmar</span>
-              <span><kbd className="bg-zinc-150 px-1 py-0.2 rounded font-bold">Esc</kbd> Fechar</span>
+              <span><kbd className="bg-zinc-200 px-1 py-0.5 rounded font-bold">↑↓</kbd> Navegar</span>
+              <span><kbd className="bg-zinc-200 px-1 py-0.5 rounded font-bold">Enter</kbd> Confirmar</span>
+              <span><kbd className="bg-zinc-200 px-1 py-0.5 rounded font-bold">Esc</kbd> Fechar</span>
             </div>
           </div>
         </div>

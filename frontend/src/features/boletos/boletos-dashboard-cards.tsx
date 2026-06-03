@@ -13,7 +13,7 @@ interface BoletosDashboardCardsProps {
 export function BoletosDashboardCards({ data, isLoading }: BoletosDashboardCardsProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
         {Array.from({ length: 6 }).map((_, index) => (
           <StatCard key={index} label="" value="" loading />
         ))}
@@ -33,7 +33,7 @@ export function BoletosDashboardCards({ data, isLoading }: BoletosDashboardCards
   const processando = Math.max((data?.boletos_enviados_hoje ?? 0) - (data?.boletos_processados_hoje ?? 0), 0)
 
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
       <StatCard
         label="Pendentes de Revisão"
         value={String(pendentes)}

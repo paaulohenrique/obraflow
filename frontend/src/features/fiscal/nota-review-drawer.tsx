@@ -158,7 +158,7 @@ export function NotaReviewDrawer({ notaId, initialHistoryOpen = false, onClose }
         <Dialog.Overlay className="fixed inset-0 z-40 bg-zinc-950/20 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0" />
         <Dialog.Content
           className={cn(
-            "fixed right-0 top-0 z-50 flex h-full w-full max-w-6xl flex-col bg-white shadow-2xl border-l border-zinc-150",
+            "fixed right-0 top-0 z-50 flex h-full w-full max-w-6xl flex-col bg-white shadow-2xl border-l border-zinc-200",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
             "duration-200"
@@ -222,7 +222,7 @@ export function NotaReviewDrawer({ notaId, initialHistoryOpen = false, onClose }
                     </Badge>
                   </div>
 
-                  <div className="rounded-lg border border-zinc-150 bg-white p-3 space-y-2 text-xs">
+                  <div className="rounded-lg border border-zinc-200 bg-white p-3 space-y-2 text-xs">
                     <div className="flex justify-between">
                       <span className="text-zinc-400 font-medium">Emissor XML</span>
                       <span className="font-semibold text-zinc-900 truncate max-w-[160px]" title={nota.fornecedor_nome_final}>
@@ -231,7 +231,7 @@ export function NotaReviewDrawer({ notaId, initialHistoryOpen = false, onClose }
                     </div>
                     <div className="flex justify-between">
                       <span className="text-zinc-400 font-medium">CNPJ Fornecedor</span>
-                      <span className="font-mono text-zinc-650">{formatDocument(nota.fornecedor_cnpj_xml)}</span>
+                      <span className="font-mono text-zinc-700">{formatDocument(nota.fornecedor_cnpj_xml)}</span>
                     </div>
                     <div className="flex justify-between border-t border-zinc-100 pt-2 mt-1">
                       <span className="text-zinc-400 font-medium">Data Emissão</span>
@@ -246,7 +246,7 @@ export function NotaReviewDrawer({ notaId, initialHistoryOpen = false, onClose }
                       <span className="font-semibold text-zinc-900">{nota.itens_total} itens</span>
                     </div>
                     {nota.itens_sem_produto > 0 && (
-                      <div className="flex justify-between text-red-650 bg-red-50/50 px-2 py-0.5 rounded border border-red-100">
+                      <div className="flex justify-between text-red-600 bg-red-50/50 px-2 py-0.5 rounded border border-red-100">
                         <span className="font-medium">Itens sem vínculo</span>
                         <span className="font-bold">{nota.itens_sem_produto} pendentes</span>
                       </div>
@@ -285,7 +285,7 @@ export function NotaReviewDrawer({ notaId, initialHistoryOpen = false, onClose }
                   </div>
                 </div>
 
-                <div className="space-y-2 border-t border-zinc-150 pt-5">
+                <div className="space-y-2 border-t border-zinc-200 pt-5">
                   <Button
                     type="button"
                     variant="outline"
@@ -298,7 +298,7 @@ export function NotaReviewDrawer({ notaId, initialHistoryOpen = false, onClose }
                   </Button>
 
                   {showHistory && (
-                    <div className="max-h-64 overflow-y-auto rounded-lg border border-zinc-150 bg-white">
+                    <div className="max-h-64 overflow-y-auto rounded-lg border border-zinc-200 bg-white">
                       {historicoQuery.isLoading ? (
                         <div className="space-y-2 p-3">
                           <Skeleton className="h-9 w-full" />
@@ -334,7 +334,7 @@ export function NotaReviewDrawer({ notaId, initialHistoryOpen = false, onClose }
 
                 {/* Confirm / Reject forms */}
                 {nota.status === "AGUARDANDO_REVISAO" && (
-                  <div className="border-t border-zinc-150 pt-5 space-y-4">
+                  <div className="border-t border-zinc-200 pt-5 space-y-4">
                     
                     {!confirming && !rejecting && (
                       <div className="grid grid-cols-2 gap-3">
@@ -357,7 +357,7 @@ export function NotaReviewDrawer({ notaId, initialHistoryOpen = false, onClose }
                     )}
 
                     {nota.itens_sem_produto > 0 && !confirming && !rejecting && (
-                      <p className="text-[10px] text-center text-zinc-450 leading-relaxed">
+                      <p className="text-[10px] text-center text-zinc-500 leading-relaxed">
                         ⚠️ Você precisa vincular todos os <strong>{nota.itens_sem_produto} itens pendentes</strong> do XML aos produtos correspondentes antes de liberar a entrada de estoque.
                       </p>
                     )}
@@ -367,7 +367,7 @@ export function NotaReviewDrawer({ notaId, initialHistoryOpen = false, onClose }
                       <div className="rounded-lg border border-red-200 bg-red-50/30 p-4 space-y-3">
                         <div className="flex justify-between items-center">
                           <h6 className="text-xs font-bold text-red-900">Rejeitar Nota Fiscal</h6>
-                          <button onClick={() => setRejecting(false)} className="text-zinc-400 hover:text-zinc-650">
+                          <button onClick={() => setRejecting(false)} className="text-zinc-400 hover:text-zinc-700">
                             <X className="size-4" />
                           </button>
                         </div>
@@ -398,7 +398,7 @@ export function NotaReviewDrawer({ notaId, initialHistoryOpen = false, onClose }
                       <div className="rounded-lg border border-zinc-200 bg-white p-4 space-y-4">
                         <div className="flex justify-between items-center">
                           <h6 className="text-xs font-bold text-zinc-950">Configurações de Lançamento</h6>
-                          <button onClick={() => setConfirming(false)} className="text-zinc-400 hover:text-zinc-650">
+                          <button onClick={() => setConfirming(false)} className="text-zinc-400 hover:text-zinc-700">
                             <X className="size-4" />
                           </button>
                         </div>
@@ -615,7 +615,7 @@ function XMLItemRow({
       <div className="flex items-start justify-between gap-4 cursor-pointer select-none" onClick={() => setExpanded(!expanded)}>
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] font-bold text-zinc-450 bg-zinc-100 px-1.5 py-0.2 rounded">
+            <span className="font-mono text-[10px] font-bold text-zinc-500 bg-zinc-100 px-1.5 py-0.5 rounded">
               #{item.ordem}
             </span>
             <span className="text-xs font-bold text-zinc-900 leading-snug">{item.descricao_original}</span>
@@ -754,7 +754,7 @@ function XMLItemRow({
                               </p>
                             </div>
                             <div className="text-right">
-                              <span className="inline-block text-[9px] font-extrabold bg-green-50 text-green-700 px-1.5 py-0.2 rounded border border-green-150">
+                              <span className="inline-block text-[9px] font-extrabold bg-green-50 text-green-700 px-1.5 py-0.5 rounded border border-green-200">
                                 {simPct}% match
                               </span>
                             </div>

@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query"
 import {
   AlertTriangle,
   Ban,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Landmark,
@@ -20,7 +19,8 @@ import * as Tabs from "@radix-ui/react-tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
+import { SkeletonTable } from "@/components/ui/skeleton"
 import { StatCard } from "@/components/ui/stat-card"
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table"
 import { Shell } from "@/components/layout/shell"
@@ -176,9 +176,9 @@ export default function FinanceiroPage() {
         subtitle="Contas a pagar, recebimentos e fluxo financeiro"
       />
 
-      <main className="flex-1 space-y-5 p-6">
+      <main className="flex-1 space-y-5 p-4 md:p-6">
         {/* ─── KPIs ──────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <StatCard
             label="Recebido Hoje"
             value={formatCurrency(dash?.recebido_hoje)}
@@ -292,16 +292,15 @@ export default function FinanceiroPage() {
 
               <CardContent className="p-0">
                 {contasQuery.isLoading ? (
-                  <div className="space-y-2 p-5">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                      <Skeleton key={i} className="h-12 w-full" />
-                    ))}
-                  </div>
+                  <SkeletonTable rows={6} cols={7} />
                 ) : contas.length === 0 ? (
-                  <div className="flex flex-col items-center py-14 text-center">
-                    <CheckCircle2 className="size-8 text-zinc-200 mb-2" />
-                    <p className="text-sm text-zinc-400">Nenhuma conta encontrada.</p>
-                  </div>
+                  <EmptyState
+                    icon={<Landmark className="size-5" />}
+                    title="Nenhuma conta a pagar encontrada"
+                    description="Cadastre contas de fornecedores, despesas e boletos para acompanhar vencimentos e baixas."
+                    actionLabel={canOperate ? "Nova conta a pagar" : undefined}
+                    onAction={canOperate ? () => setNovaContaOpen(true) : undefined}
+                  />
                 ) : (
                   <Table>
                     <Thead>

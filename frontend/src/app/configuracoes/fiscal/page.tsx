@@ -158,7 +158,7 @@ export default function ConfiguracaoFiscalPage() {
         }
       />
 
-      <main className="flex-1 space-y-5 p-6">
+      <main className="flex-1 space-y-5 p-4 md:p-6">
         <div className="max-w-5xl space-y-5">
           <div className="flex items-start gap-3 rounded-md border border-yellow-200 bg-yellow-50 px-4 py-3 text-sm text-yellow-900">
             <AlertTriangle className="mt-0.5 size-4 flex-shrink-0" />

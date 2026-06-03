@@ -7,7 +7,8 @@ import * as Dialog from "@radix-ui/react-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
+import { SkeletonTable } from "@/components/ui/skeleton"
 import { StatCard } from "@/components/ui/stat-card"
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table"
 import { Shell } from "@/components/layout/shell"
@@ -82,9 +83,9 @@ export default function VendasPage() {
     <Shell>
       <Topbar title="Vendas" subtitle="Histórico de vendas no balcão" />
 
-      <main className="flex-1 space-y-5 p-6">
+      <main className="flex-1 space-y-5 p-4 md:p-6">
         {/* KPIs */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Vendas hoje" value={`${dashQuery.data?.count_hoje ?? 0}`} />
           <StatCard
             label="Faturado hoje"
@@ -123,16 +124,13 @@ export default function VendasPage() {
 
           <CardContent className="p-0">
             {vendasQuery.isLoading ? (
-              <div className="space-y-2 p-5">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
-                ))}
-              </div>
+              <SkeletonTable rows={6} cols={7} />
             ) : vendas.length === 0 ? (
-              <div className="flex flex-col items-center py-14 text-center">
-                <ShoppingBag className="size-8 text-zinc-200 mb-2" />
-                <p className="text-sm text-zinc-400">Nenhuma venda encontrada.</p>
-              </div>
+              <EmptyState
+                icon={<ShoppingBag className="size-5" />}
+                title="Nenhuma venda encontrada"
+                description="As vendas concluídas no PDV aparecerão aqui com pagamento, status e total."
+              />
             ) : (
               <Table>
                 <Thead>

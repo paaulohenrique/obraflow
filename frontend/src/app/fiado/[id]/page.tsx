@@ -108,7 +108,7 @@ export default function FiadoDetalhePage() {
     return (
       <Shell>
         <Topbar title="Fiado" />
-        <main className="flex-1 space-y-5 p-6">
+        <main className="flex-1 space-y-5 p-4 md:p-6">
           <Skeleton className="h-32 w-full" />
           <Skeleton className="h-80 w-full" />
         </main>
@@ -202,7 +202,7 @@ export default function FiadoDetalhePage() {
         }
       />
 
-      <main className="flex-1 space-y-5 p-6">
+      <main className="flex-1 space-y-5 p-4 md:p-6">
         {contaFechada && (
           <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -230,7 +230,7 @@ export default function FiadoDetalhePage() {
                     <p className="text-xs text-zinc-400 font-mono">{formatDocument(conta.cliente_cpf_cnpj)}</p>
                   </div>
                 </div>
-                <div className="space-y-1.5 pt-2 border-t border-zinc-100 text-xs text-zinc-650">
+                <div className="space-y-1.5 pt-2 border-t border-zinc-100 text-xs text-zinc-700">
                   <div className="flex items-center gap-2">
                     <User className="size-3.5 text-zinc-400" />
                     <span>Operador: {conta.created_by_nome || "Sistema"}</span>
@@ -249,17 +249,17 @@ export default function FiadoDetalhePage() {
 
           <Card className="lg:col-span-2 bg-zinc-900 border-none text-white overflow-hidden relative shadow-md flex flex-col justify-between">
             <CardContent className="py-5 flex-1 flex flex-col justify-between">
-              <div className="grid grid-cols-3 gap-4 border-b border-zinc-800 pb-4">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3 border-b border-zinc-800 pb-4">
                 <div>
                   <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400">Total Lançado</p>
                   <p className="text-2xl font-bold tabular-nums text-white">{formatCurrency(conta.valor_total)}</p>
                 </div>
                 <div>
-                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-450">Valor Pago</p>
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">Valor Pago</p>
                   <p className="text-2xl font-bold tabular-nums text-green-400">{formatCurrency(conta.valor_pago)}</p>
                 </div>
                 <div>
-                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-450">Saldo Devedor</p>
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">Saldo Devedor</p>
                   <p className="text-2xl font-black tabular-nums text-orange-400">
                     {formatCurrency(conta.valor_restante)}
                   </p>
@@ -292,7 +292,7 @@ export default function FiadoDetalhePage() {
               </div>
 
               {conta.observacao && (
-                <p className="mt-3 rounded-md bg-zinc-850 px-3 py-1.5 text-[11px] text-zinc-400 border border-zinc-800">
+                <p className="mt-3 rounded-md bg-zinc-900 px-3 py-1.5 text-[11px] text-zinc-400 border border-zinc-800">
                   Obs: {conta.observacao}
                 </p>
               )}

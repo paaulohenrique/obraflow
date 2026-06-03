@@ -5,12 +5,12 @@ import {
   Download,
   Eye,
   RefreshCw,
-  Plus,
   Link2
 } from "lucide-react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
 import { Table, Tbody, Td, Th, Thead, Tr } from "@/components/ui/table"
 import { useApiToast } from "@/hooks/use-api-toast"
 import { boletosService } from "@/services/boletos.service"
@@ -82,7 +82,7 @@ export function BoletosTable({ boletos, onSelect, onAddClick }: BoletosTableProp
       case "AGUARDANDO_REVISAO":
         return <Badge variant="warning">REVISAR</Badge>
       case "PROCESSANDO":
-        return <Badge className="bg-blue-50 text-blue-700 border-blue-200">PROCESSANDO</Badge>
+        return <Badge variant="info">PROCESSANDO</Badge>
       case "ENVIADO":
       default:
         return <Badge variant="outline">ENVIADO</Badge>
@@ -91,29 +91,19 @@ export function BoletosTable({ boletos, onSelect, onAddClick }: BoletosTableProp
 
   if (boletos.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-4 text-center border border-zinc-200 border-dashed rounded-xl bg-white">
-        <div className="flex size-12 items-center justify-center rounded-full bg-zinc-50 border border-zinc-150 text-zinc-400 mb-4">
-          <FileText className="size-6" />
-        </div>
-        <h4 className="text-sm font-semibold text-zinc-900">Nenhum boleto enviado ainda</h4>
-        <p className="mt-1 text-xs text-zinc-500 max-w-sm leading-relaxed">
-          Envie uma foto ou PDF de boleto para o sistema fazer a leitura automática e gerar uma conta a pagar no financeiro.
-        </p>
-        <Button
-          type="button"
-          onClick={onAddClick}
-          className="mt-4 bg-orange-500 hover:bg-orange-600 text-white font-medium shadow-sm"
-          icon={<Plus className="size-4" />}
-          size="sm"
-        >
-          Adicionar boleto
-        </Button>
-      </div>
+      <EmptyState
+        icon={<FileText className="size-5" />}
+        title="Nenhum boleto enviado ainda"
+        description="Envie uma foto ou PDF de boleto para leitura automática e geração de conta a pagar no financeiro."
+        actionLabel="Adicionar boleto"
+        onAction={onAddClick}
+        className="rounded-lg border border-dashed border-zinc-200 bg-white"
+      />
     )
   }
 
   return (
-    <div className="border border-zinc-250/60 rounded-xl bg-white shadow-sm overflow-hidden">
+    <div className="overflow-hidden rounded-lg border border-zinc-200/80 bg-white shadow-[0_1px_2px_rgba(24,24,27,0.04)]">
       <Table>
         <Thead>
           <tr>
