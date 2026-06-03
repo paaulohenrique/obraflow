@@ -12,6 +12,7 @@ MANAGER_ACTIONS = {
     "pagar",
     "abrir",
     "fechar",
+    "atualizar",
 }
 ADMIN_ACTIONS = {"inativar", "reabrir"}
 

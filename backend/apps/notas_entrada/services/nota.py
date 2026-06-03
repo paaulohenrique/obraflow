@@ -89,6 +89,35 @@ def _check_sha256(*, company_id, sha256: str) -> None:
         raise ValidationError({"arquivo": "Este XML já foi importado para esta empresa."})
 
 
+def _validar_payload_nfe(payload) -> None:
+    """Valida os campos obrigatórios do payload extraído do XML antes de qualquer persistência."""
+    erros = {}
+    if not payload.chave_acesso or len(payload.chave_acesso) != 44:
+        erros["chave_acesso"] = "Chave de acesso ausente ou inválida (deve ter 44 dígitos)."
+    if not payload.numero:
+        erros["numero"] = "Número da nota ausente no XML."
+    if not payload.serie:
+        erros["serie"] = "Série da nota ausente no XML."
+    if not payload.data_emissao:
+        erros["data_emissao"] = "Data de emissão ausente no XML."
+    if not payload.fornecedor_cnpj:
+        erros["fornecedor_cnpj"] = "CNPJ do emitente ausente no XML."
+    if not payload.fornecedor_nome:
+        erros["fornecedor_nome"] = "Nome do emitente ausente no XML."
+    if not payload.itens:
+        erros["itens"] = "A nota não contém itens."
+    else:
+        for idx, item in enumerate(payload.itens, start=1):
+            if not item.descricao_original:
+                erros[f"item_{idx}_descricao"] = f"Item {idx}: descrição ausente."
+            if (item.quantidade or 0) <= 0:
+                erros[f"item_{idx}_quantidade"] = f"Item {idx}: quantidade inválida ({item.quantidade})."
+            if (item.valor_unitario or 0) < 0:
+                erros[f"item_{idx}_valor"] = f"Item {idx}: valor unitário inválido."
+    if erros:
+        raise ValidationError({"xml": "XML inválido. Campos ausentes ou incorretos.", **erros})
+
+
 def _check_chave(*, company_id, chave_acesso: str) -> None:
     if not chave_acesso:
         return
@@ -141,6 +170,9 @@ def importar_xml_nota(
 
     # 2. Parse XML
     payload = parse_nfe_xml(conteudo)
+
+    # 2.1 Pré-validação dos campos obrigatórios do payload
+    _validar_payload_nfe(payload)
 
     # 3. Verificar chave duplicada (após parse para extrair a chave)
     _check_chave(company_id=company_id, chave_acesso=payload.chave_acesso)

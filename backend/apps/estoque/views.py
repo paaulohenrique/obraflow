@@ -16,6 +16,7 @@ from .models import (
 )
 from .permissions import EstoquePermission
 from .selectors import (
+    auditoria_produtos_operacionais,
     get_categoria_by_id,
     get_categorias,
     get_forma_venda_by_id,
@@ -42,6 +43,7 @@ from .serializers import (
     FormaVendaProdutoUpdateSerializer,
     FornecedorSerializer,
     MovimentacaoSerializer,
+    ProdutoAuditoriaOperacionalSerializer,
     ProdutoCreateSerializer,
     ProdutoDetailSerializer,
     ProdutoListSerializer,
@@ -62,6 +64,7 @@ from .services import (
     criar_forma_venda,
     definir_forma_padrao,
     devolucao_estoque,
+    garantir_forma_venda_padrao,
     entrada_estoque,
     inativar_forma_venda,
     inativar_produto,
@@ -360,6 +363,30 @@ class ProdutoViewSet(_TenantViewSet):
     def baixo_estoque(self, request):
         qs = produtos_baixo_estoque(company_id=self._company_id()).order_by("nome")
         return self._paginated(qs, ProdutoListSerializer)
+
+    @extend_schema(
+        summary="Auditoria operacional de produtos",
+        description="Mostra produtos que podem travar venda ou operação no balcão.",
+        responses={200: ProdutoAuditoriaOperacionalSerializer},
+        tags=["Estoque - Produtos"],
+    )
+    @action(detail=False, methods=["get"], url_path="auditoria-operacional")
+    def auditoria_operacional(self, request):
+        data = auditoria_produtos_operacionais(company_id=self._company_id())
+        return Response(ProdutoAuditoriaOperacionalSerializer(data).data)
+
+    @extend_schema(
+        summary="Garantir forma de venda padrão",
+        description="Cria a forma padrão do produto caso ele ainda não tenha forma ativa.",
+        responses={200: FormaVendaProdutoSerializer},
+        tags=["Estoque - Produtos"],
+    )
+    @action(detail=True, methods=["post"], url_path="garantir-forma-venda")
+    def garantir_forma_venda(self, request, pk=None):
+        produto = get_produto_by_id(company_id=self._company_id(), produto_id=pk)
+        self.check_object_permissions(request, produto)
+        forma = garantir_forma_venda_padrao(user=request.user, produto=produto, request=request)
+        return Response(FormaVendaProdutoSerializer(forma).data)
 
     @extend_schema(
         summary="Movimentações do produto",

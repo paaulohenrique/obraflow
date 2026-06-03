@@ -59,6 +59,8 @@ class ItemVendaListSerializer(BaseModelSerializer):
             "quantidade",
             "preco_unitario",
             "subtotal",
+            "custo_unitario_historico",
+            "custo_total_historico",
             "created_at",
         ]
         read_only_fields = fields

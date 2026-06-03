@@ -4,6 +4,7 @@ from .forma_venda import (
     converter_quantidade,
     criar_forma_venda,
     definir_forma_padrao,
+    garantir_forma_venda_padrao,
     inativar_forma_venda,
     soft_delete_forma_venda,
 )
@@ -44,6 +45,7 @@ __all__ = [
     "create_unidade",
     "criar_forma_venda",
     "definir_forma_padrao",
+    "garantir_forma_venda_padrao",
     "devolucao_estoque",
     "entrada_estoque",
     "inativar_forma_venda",

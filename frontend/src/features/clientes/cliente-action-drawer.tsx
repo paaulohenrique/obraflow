@@ -19,8 +19,9 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useApiToast } from "@/hooks/use-api-toast"
+import { cobrancasService } from "@/services/cobrancas.service"
 import { fiadoService } from "@/services/fiado.service"
-import { cn, formatCurrency, formatDate, formatDocument, formatPhone, initials } from "@/lib/utils"
+import { cn, formatCurrency, formatDate, formatDatetime, formatDocument, formatPhone, initials } from "@/lib/utils"
 import { toNumber } from "@/lib/format"
 import type { Cliente } from "@/types"
 
@@ -28,6 +29,14 @@ interface ClienteActionDrawerProps {
   cliente: Cliente | null
   onClose: () => void
   onEdit: (cliente: Cliente) => void
+}
+
+function statusCobrancaVariant(status: string) {
+  if (status === "LIDA") return "success" as const
+  if (status === "FALHOU") return "error" as const
+  if (status === "ENTREGUE") return "info" as const
+  if (status === "ENVIADA") return "default" as const
+  return "warning" as const
 }
 
 export function ClienteActionDrawer({ cliente, onClose, onEdit }: ClienteActionDrawerProps) {
@@ -66,10 +75,17 @@ export function ClienteActionDrawer({ cliente, onClose, onEdit }: ClienteActionD
     enabled: open && Boolean(clienteId),
   })
 
+  const historicoCobrancasQuery = useQuery({
+    queryKey: ["cobrancas", "cliente", clienteId, "historico"],
+    queryFn: () => cobrancasService.historicoCliente(clienteId!, { page_size: 8 }),
+    enabled: open && Boolean(clienteId),
+  })
+
   if (!cliente) return null
 
   const contaAberta = contaAbertaQuery.data
   const contasFechadas = historicoFiadoQuery.data?.results ?? []
+  const historicoCobrancas = historicoCobrancasQuery.data?.results ?? []
   const ultimaMovimentacao = contaAberta?.updated_at ?? contasFechadas[0]?.updated_at ?? cliente.updated_at
   const saldo = toNumber(cliente.saldo_devedor)
   const limite = toNumber(cliente.limite_credito)
@@ -306,6 +322,46 @@ export function ClienteActionDrawer({ cliente, onClose, onEdit }: ClienteActionD
             </div>
 
             {/* Histórico de Fiados */}
+            <div className="border-b border-zinc-100 px-6 py-5">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                  Histórico de cobranças
+                </p>
+                <MessageSquare className="size-3.5 text-zinc-400" />
+              </div>
+
+              {historicoCobrancasQuery.isLoading ? (
+                <div className="space-y-2.5">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <Skeleton key={index} className="h-14 w-full" />
+                  ))}
+                </div>
+              ) : historicoCobrancas.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-zinc-200 p-4 text-center text-xs text-zinc-500">
+                  Nenhuma cobrança WhatsApp registrada.
+                </div>
+              ) : (
+                <div className="space-y-2.5">
+                  {historicoCobrancas.map((notificacao) => (
+                    <div key={notificacao.id} className="rounded-lg border border-zinc-200 bg-white p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-zinc-900">{notificacao.tipo}</p>
+                          <p className="mt-0.5 text-[10px] text-zinc-400">{formatDatetime(notificacao.created_at)}</p>
+                        </div>
+                        <Badge variant={statusCobrancaVariant(notificacao.status)} className="text-[9px]">
+                          {notificacao.status}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 line-clamp-2 text-[11px] leading-relaxed text-zinc-500">
+                        {notificacao.mensagem || "-"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="px-6 py-5">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">

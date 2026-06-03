@@ -220,6 +220,30 @@ export interface ProdutoPayload {
   aliquota_cofins?: ApiDecimal
 }
 
+export interface ProdutoAuditoriaItem {
+  id: string
+  nome: string
+  sku: string
+  categoria_nome: string
+  unidade_sigla: string
+  preco_venda: ApiDecimal
+  estoque_atual: ApiDecimal
+  is_active: boolean
+}
+
+export interface ProdutoAuditoriaGrupo {
+  count: number
+  results: ProdutoAuditoriaItem[]
+}
+
+export interface ProdutoAuditoriaOperacional {
+  sem_forma_venda: ProdutoAuditoriaGrupo
+  sem_categoria: ProdutoAuditoriaGrupo
+  sem_unidade: ProdutoAuditoriaGrupo
+  sem_preco: ProdutoAuditoriaGrupo
+  inativos: ProdutoAuditoriaGrupo
+}
+
 export interface UnidadeMedida {
   id: string
   company_id: string
@@ -343,6 +367,9 @@ export interface ContaFiado {
   cliente: string
   cliente_nome: string
   cliente_cpf_cnpj: string
+  cliente_limite_credito: ApiDecimal
+  cliente_saldo_devedor: ApiDecimal
+  cliente_credito_disponivel: ApiDecimal
   status: StatusContaFiado
   valor_total: ApiDecimal
   valor_pago: ApiDecimal
@@ -448,6 +475,123 @@ export interface DashboardFiado {
   ticket_medio_fiado: ApiDecimal
 }
 
+export type StatusNotificacao =
+  | "PENDENTE"
+  | "ENFILEIRADA"
+  | "ENVIADA"
+  | "ENTREGUE"
+  | "LIDA"
+  | "FALHOU"
+  | "CANCELADA"
+
+export type TipoCobranca =
+  | "COBRANCA_FIADO"
+  | "LEMBRETE_VENCIMENTO"
+  | "COBRANCA_1_DIA"
+  | "COBRANCA_7_DIAS"
+  | "COBRANCA_15_DIAS"
+  | "COBRANCA_30_DIAS"
+
+export interface CobrancaConta {
+  id: string
+  cliente_id: string
+  cliente_nome: string
+  cliente_documento: string
+  cliente_telefone: string
+  cliente_whatsapp: string
+  status: StatusContaFiado
+  valor_total: ApiDecimal
+  valor_pago: ApiDecimal
+  valor_restante: ApiDecimal
+  data_abertura: string
+  data_vencimento: string | null
+  dias_atraso: number
+  status_cobranca: StatusNotificacao
+  ultima_cobranca_id: string | null
+  ultima_cobranca_tipo: TipoCobranca | null
+  ultima_cobranca_em: string | null
+  tem_contato: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface CobrancaPreview {
+  conta_id: string
+  cliente_id: string
+  cliente_nome: string
+  valor: ApiDecimal
+  data_vencimento: string | null
+  data_vencimento_formatada: string
+  dias_atraso: number
+  tipo: TipoCobranca
+  mensagem: string
+}
+
+export interface EnviarCobrancaPayload {
+  conta_id: string
+  tipo?: TipoCobranca
+  idempotency_key?: string
+}
+
+export interface EnviarLoteCobrancaPayload {
+  criterio: 1 | 7 | 15 | 30
+  conta_ids?: string[]
+  idempotency_key?: string
+}
+
+export interface ResultadoLoteCobranca {
+  criterio: number
+  quantidade: number
+  valor_total: ApiDecimal
+  notificacoes: string[]
+  falhas: Array<Record<string, string>>
+}
+
+export interface DashboardCobranca {
+  pendentes: number
+  mensagens_enviadas: number
+  entregues: number
+  lidas: number
+  falharam: number
+  taxa_entrega: number
+  taxa_leitura: number
+  clientes_cobrados: number
+  valor_cobrado: ApiDecimal
+  valor_recuperado: ApiDecimal
+  percentual_recuperacao: number
+}
+
+export interface ConfiguracaoCobranca {
+  id: string
+  ativo: boolean
+  enviar_1_dia_antes: boolean
+  enviar_no_vencimento: boolean
+  enviar_7_dias_apos: boolean
+  enviar_15_dias_apos: boolean
+  enviar_30_dias_apos: boolean
+  updated_by: string | null
+  created_at: string
+  updated_at: string
+  is_active: boolean
+}
+
+export interface NotificacaoCobranca {
+  id: string
+  tipo: TipoCobranca | "AGRADECIMENTO_PAGAMENTO" | string
+  destinatario_nome: string
+  destinatario_contato: string
+  mensagem: string
+  status: StatusNotificacao
+  origem_tipo: string
+  origem_id: string | null
+  sent_at: string | null
+  delivered_at: string | null
+  read_at: string | null
+  failed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface FluxoFinanceiroItem {
   data: string
   tipo: "ENTRADA" | "SAIDA"
@@ -466,7 +610,11 @@ export interface DashboardFinanceiro {
   total_contas_pagar_abertas: ApiDecimal
   total_contas_pagar_vencidas: ApiDecimal
   saldo_caixa: ApiDecimal
+  saldo_bancario: ApiDecimal
   saldo_total_financeiro: ApiDecimal
+  inadimplencia_valor_cobrado: ApiDecimal
+  inadimplencia_valor_recuperado: ApiDecimal
+  inadimplencia_percentual_recuperacao: number
   fluxo_diario: FluxoFinanceiroItem[]
   entradas_por_categoria: CategoriaFinanceiraTotal[]
   saidas_por_categoria: CategoriaFinanceiraTotal[]
@@ -742,6 +890,42 @@ export type TipoLancamento = "ENTRADA" | "SAIDA"
 export type StatusLancamento = "CONFIRMADO" | "CANCELADO"
 export type FormaPagamento = "DINHEIRO" | "PIX" | "CARTAO" | "BOLETO" | "TRANSFERENCIA" | "OUTRO"
 export type OrigemLancamento = "MANUAL" | "FIADO" | "CONTA_PAGAR" | "ESTORNO" | "AJUSTE"
+
+export type FormaPagamentoOperacional = "DINHEIRO" | "PIX" | "CARTAO" | "TRANSFERENCIA"
+
+export interface DestinoPdv {
+  forma_pagamento: FormaPagamentoOperacional
+  conta: string | null
+  conta_nome: string
+  conta_tipo: TipoContaFinanceira | ""
+  configurada: boolean
+}
+
+export interface ConfiguracaoFinanceiraOperacional {
+  id: string
+  company_id: string
+  conta_pix: string | null
+  conta_pix_nome: string
+  conta_dinheiro: string | null
+  conta_dinheiro_nome: string
+  conta_cartao: string | null
+  conta_cartao_nome: string
+  conta_transferencia: string | null
+  conta_transferencia_nome: string
+  destinos_pdv: DestinoPdv[]
+  updated_by: string | null
+  updated_by_nome: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ConfiguracaoFinanceiraOperacionalPayload {
+  conta_pix?: string | null
+  conta_dinheiro?: string | null
+  conta_cartao?: string | null
+  conta_transferencia?: string | null
+}
 
 export interface LancamentoFinanceiro {
   id: string

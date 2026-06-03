@@ -24,6 +24,23 @@ def componentes_cobranca_fiado(
     return [_body_params(cliente_nome, f"{valor_restante:.2f}", data_vencimento)]
 
 
+def componentes_cobranca_operacional(
+    *,
+    cliente_nome: str,
+    valor_restante: Decimal,
+    data_vencimento: str,
+    dias_atraso: int,
+) -> list[dict[str, Any]]:
+    return [
+        _body_params(
+            cliente_nome,
+            f"{valor_restante:.2f}",
+            data_vencimento,
+            str(dias_atraso),
+        )
+    ]
+
+
 def componentes_lembrete_vencimento(
     *,
     cliente_nome: str,

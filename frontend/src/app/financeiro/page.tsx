@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   AlertTriangle,
+  BadgeCheck,
   Ban,
   ChevronLeft,
   ChevronRight,
@@ -178,7 +179,7 @@ export default function FinanceiroPage() {
 
       <main className="flex-1 space-y-5 p-4 md:p-6">
         {/* ─── KPIs ──────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
           <StatCard
             label="Recebido Hoje"
             value={formatCurrency(dash?.recebido_hoje)}
@@ -202,9 +203,26 @@ export default function FinanceiroPage() {
             accent={Number(dash?.total_contas_pagar_vencidas) > 0}
           />
           <StatCard
-            label="Saldo em Caixa"
+            label="Saldo Caixa"
             value={formatCurrency(dash?.saldo_caixa)}
             icon={<Landmark className="size-4" />}
+          />
+          <StatCard
+            label="Saldo Bancário"
+            value={formatCurrency(dash?.saldo_bancario)}
+            icon={<Landmark className="size-4" />}
+          />
+          <StatCard
+            label="Saldo Total"
+            value={formatCurrency(dash?.saldo_total_financeiro)}
+            icon={<Landmark className="size-4" />}
+            accent
+          />
+          <StatCard
+            label="Recuperação"
+            value={`${dash?.inadimplencia_percentual_recuperacao ?? 0}%`}
+            icon={<BadgeCheck className="size-4" />}
+            accent={Number(dash?.inadimplencia_valor_recuperado) > 0}
           />
         </div>
 

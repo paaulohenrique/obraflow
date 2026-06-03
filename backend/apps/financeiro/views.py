@@ -6,7 +6,14 @@ from drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_v
 from apps.core.pagination import StandardResultsSetPagination
 
 from .filters import CaixaDiarioFilter, ContaPagarFilter, LancamentoFinanceiroFilter
-from .models import CaixaDiario, CategoriaFinanceira, ContaFinanceira, ContaPagar, LancamentoFinanceiro
+from .models import (
+    CaixaDiario,
+    CategoriaFinanceira,
+    ConfiguracaoFinanceiraOperacional,
+    ContaFinanceira,
+    ContaPagar,
+    LancamentoFinanceiro,
+)
 from .permissions import FinanceiroPermission
 from .selectors import (
     get_caixa_by_id,
@@ -30,6 +37,7 @@ from .serializers import (
     CancelarContaPagarSerializer,
     CancelarLancamentoSerializer,
     CategoriaFinanceiraSerializer,
+    ConfiguracaoFinanceiraOperacionalSerializer,
     ContaFinanceiraCreateSerializer,
     ContaFinanceiraDetailSerializer,
     ContaFinanceiraListSerializer,
@@ -49,6 +57,7 @@ from .serializers import (
 from .services import (
     abrir_caixa,
     ajustar_saldo_conta,
+    atualizar_configuracao_financeira_operacional,
     cancelar_conta_pagar,
     cancelar_lancamento_financeiro,
     criar_categoria_financeira,
@@ -56,6 +65,7 @@ from .services import (
     criar_conta_pagar,
     criar_lancamento_financeiro,
     fechar_caixa,
+    get_or_create_configuracao_financeira_operacional,
     inativar_categoria_financeira,
     inativar_conta_financeira,
     pagar_conta_pagar,
@@ -198,6 +208,44 @@ class ContaFinanceiraViewSet(_FinanceiroViewSet):
         self.check_object_permissions(request, conta)
         conta = inativar_conta_financeira(user=request.user, conta=conta, request=request)
         return Response(ContaFinanceiraDetailSerializer(conta).data)
+
+
+class ConfiguracaoFinanceiraOperacionalViewSet(_FinanceiroViewSet):
+    queryset = ConfiguracaoFinanceiraOperacional.objects.none()
+    serializer_class = ConfiguracaoFinanceiraOperacionalSerializer
+
+    @extend_schema(
+        summary="Configuração financeira operacional",
+        responses={200: ConfiguracaoFinanceiraOperacionalSerializer},
+        tags=["Financeiro - Configurações"],
+    )
+    def list(self, request):
+        config = get_or_create_configuracao_financeira_operacional(company_id=self._company_id())
+        return Response(ConfiguracaoFinanceiraOperacionalSerializer(config, context=self._serializer_context()).data)
+
+    @extend_schema(
+        summary="Atualizar configuração financeira operacional",
+        request=ConfiguracaoFinanceiraOperacionalSerializer,
+        responses={200: ConfiguracaoFinanceiraOperacionalSerializer},
+        tags=["Financeiro - Configurações"],
+    )
+    @action(detail=False, methods=["patch"], url_path="atualizar")
+    def atualizar(self, request):
+        config = get_or_create_configuracao_financeira_operacional(company_id=self._company_id())
+        serializer = ConfiguracaoFinanceiraOperacionalSerializer(
+            config,
+            data=request.data,
+            partial=True,
+            context=self._serializer_context(),
+        )
+        serializer.is_valid(raise_exception=True)
+        config = atualizar_configuracao_financeira_operacional(
+            user=request.user,
+            config=config,
+            data=serializer.validated_data,
+            request=request,
+        )
+        return Response(ConfiguracaoFinanceiraOperacionalSerializer(config, context=self._serializer_context()).data)
 
 
 class CategoriaFinanceiraViewSet(_FinanceiroViewSet):

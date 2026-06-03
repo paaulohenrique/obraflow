@@ -18,6 +18,16 @@ _STATUS_MAP = {
     "sent": "ENVIADA",
 }
 
+_STATUS_RANK = {
+    "PENDENTE": 0,
+    "ENFILEIRADA": 1,
+    "ENVIADA": 2,
+    "ENTREGUE": 3,
+    "LIDA": 4,
+    "FALHOU": 5,
+    "CANCELADA": 5,
+}
+
 
 def verificar_assinatura_webhook(
     payload_bytes: bytes, signature_header: str
@@ -75,7 +85,11 @@ def processar_evento_webhook(
                 payload=status_entry,
             )
 
-        _aplicar_status_notificacao(msg_id=msg_id, event_type=event_type)
+        _aplicar_status_notificacao(
+            msg_id=msg_id,
+            event_type=event_type,
+            payload=status_entry,
+        )
 
         evento.processed = True
         evento.save(update_fields=["processed"])
@@ -91,8 +105,14 @@ def processar_evento_webhook(
         )
 
 
-def _aplicar_status_notificacao(*, msg_id: str, event_type: str) -> None:
+def _aplicar_status_notificacao(
+    *,
+    msg_id: str,
+    event_type: str,
+    payload: dict[str, Any] | None = None,
+) -> None:
     from apps.notificacoes.models import Notificacao
+    from apps.notificacoes.services.fiado_timeline import registrar_evento_cobranca_fiado
 
     if not msg_id:
         return
@@ -105,18 +125,45 @@ def _aplicar_status_notificacao(*, msg_id: str, event_type: str) -> None:
         return
 
     now = timezone.now()
-    update_kwargs: dict[str, Any] = {"status": novo_status, "updated_at": now}
+    erro_codigo = ""
+    erro_mensagem = ""
+    errors = (payload or {}).get("errors") or []
+    if errors:
+        first_error = errors[0]
+        erro_codigo = str(first_error.get("code", ""))
+        erro_mensagem = first_error.get("message") or first_error.get("title") or ""
 
-    if novo_status == "ENTREGUE":
-        update_kwargs["delivered_at"] = now
-    elif novo_status == "LIDA":
-        update_kwargs["read_at"] = now
-    elif novo_status == "FALHOU":
-        update_kwargs["failed_at"] = now
+    for notificacao in qs:
+        if _STATUS_RANK.get(novo_status, 0) < _STATUS_RANK.get(notificacao.status, 0):
+            continue
 
-    qs.update(**update_kwargs)
-    logger.info(
-        "Webhook atualiza Notificacao provider_message_id=%s → %s",
-        msg_id,
-        novo_status,
-    )
+        notificacao.status = novo_status
+        update_fields = ["status", "updated_at"]
+
+        if novo_status == "ENTREGUE":
+            notificacao.delivered_at = notificacao.delivered_at or now
+            update_fields.append("delivered_at")
+        elif novo_status == "LIDA":
+            notificacao.read_at = notificacao.read_at or now
+            update_fields.append("read_at")
+        elif novo_status == "FALHOU":
+            notificacao.failed_at = notificacao.failed_at or now
+            update_fields.append("failed_at")
+            if erro_codigo:
+                notificacao.erro_codigo = erro_codigo
+                update_fields.append("erro_codigo")
+            if erro_mensagem:
+                notificacao.erro_mensagem = erro_mensagem
+                update_fields.append("erro_mensagem")
+
+        notificacao.save(update_fields=update_fields)
+        registrar_evento_cobranca_fiado(
+            notificacao=notificacao,
+            status=novo_status,
+            extra={"webhook_event_type": event_type},
+        )
+        logger.info(
+            "Webhook atualiza Notificacao provider_message_id=%s → %s",
+            msg_id,
+            novo_status,
+        )

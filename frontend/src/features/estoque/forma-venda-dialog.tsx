@@ -2,11 +2,12 @@
 
 import * as Dialog from "@radix-ui/react-dialog"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { Ruler, X } from "lucide-react"
+import { AlertTriangle, Ruler, X, Zap } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useApiToast } from "@/hooks/use-api-toast"
+import { estoqueService } from "@/services/estoque.service"
 import { formasVendaService } from "@/services/formas-venda.service"
 import type { FormaVendaProduto, FormaVendaProdutoPayload } from "@/types"
 
@@ -38,6 +39,51 @@ const emptyForm: FormaVendaFormState = {
   padrao: false,
   ativo: true,
   permite_fracionado: true,
+}
+
+// Presets rápidos de formas de venda comuns na construção civil
+const PRESETS = [
+  { label: "KG", nome: "Quilograma", unidade: "KG", fator: "1", permite_fracionado: true },
+  { label: "Saco 50kg", nome: "Saco 50kg", unidade: "SACO", fator: "50", permite_fracionado: false },
+  { label: "Metro", nome: "Metro", unidade: "M", fator: "1", permite_fracionado: true },
+  { label: "Barra 6m", nome: "Barra 6m", unidade: "BARRA", fator: "6", permite_fracionado: false },
+  { label: "Rolo 100m", nome: "Rolo 100m", unidade: "ROLO", fator: "100", permite_fracionado: false },
+  { label: "Unidade", nome: "Unidade", unidade: "UN", fator: "1", permite_fracionado: false },
+  { label: "Milheiro", nome: "Milheiro", unidade: "MILHEIRO", fator: "1000", permite_fracionado: false },
+] as const
+
+// Unidades granulares que deveriam ser a unidade base do produto
+const UNIDADES_IDEAIS_BASE = new Set(["KG", "G", "M", "UN", "L", "ML", "M2", "M3"])
+
+// Infere unidade e fator automaticamente a partir do nome digitado
+function inferirSugestao(nome: string): { unidade: string; fator: string; permite_fracionado: boolean } | null {
+  const n = nome.toLowerCase().trim()
+  const sacoMatch = n.match(/saco\s*(\d+)\s*kg?/)
+  if (sacoMatch) return { unidade: "SACO", fator: sacoMatch[1], permite_fracionado: false }
+  const barraMatch = n.match(/barra\s*(\d+(?:[.,]\d+)?)\s*m?/)
+  if (barraMatch) return { unidade: "BARRA", fator: barraMatch[1].replace(",", "."), permite_fracionado: false }
+  const roloMatch = n.match(/rolo\s*(\d+(?:[.,]\d+)?)\s*m?/)
+  if (roloMatch) return { unidade: "ROLO", fator: roloMatch[1].replace(",", "."), permite_fracionado: false }
+  if (n.includes("milheiro")) return { unidade: "MILHEIRO", fator: "1000", permite_fracionado: false }
+  return null
+}
+
+// Detecta quando a unidade base do produto pode estar errada (ex: base=SACO vendendo por KG)
+function avisoUnidadeBase(unidadeForm: string, unidadeBase: string): { mensagem: string; sugestao: string } | null {
+  const u = unidadeForm.toUpperCase().trim()
+  const base = unidadeBase.toUpperCase().trim()
+  if (!u || u === base) return null
+  if (!UNIDADES_IDEAIS_BASE.has(u)) return null
+  if (UNIDADES_IDEAIS_BASE.has(base)) return null
+  return {
+    mensagem: `A unidade base atual é ${base}. Para vender por ${u} e por ${base}, a unidade base deve ser ${u} — senão ${u} e ${base} viram a mesma coisa no estoque.`,
+    sugestao: u,
+  }
+}
+
+function formatFator(fator: number): string {
+  if (!Number.isFinite(fator) || fator <= 0) return "?"
+  return fator % 1 === 0 ? String(fator) : fator.toFixed(3).replace(/\.?0+$/, "")
 }
 
 function formFromForma(forma?: FormaVendaProduto | null): FormaVendaFormState {
@@ -130,12 +176,53 @@ export function FormaVendaDialog({
     onError: (error) => toast.error(error),
   })
 
+  const corrigirUnidadeMutation = useMutation({
+    mutationFn: async (siglaDesejada: string) => {
+      const resp = await estoqueService.unidades({ page_size: 100 })
+      const unit = resp.results.find((u) => u.sigla.toUpperCase() === siglaDesejada.toUpperCase())
+      if (!unit) throw new Error(`Unidade "${siglaDesejada}" não encontrada. Cadastre-a em Configurações.`)
+      await estoqueService.update(produtoId, { unidade: unit.id })
+    },
+    onSuccess: (_, sigla) => {
+      queryClient.invalidateQueries({ queryKey: ["estoque"] })
+      toast.success(`Unidade base corrigida para ${sigla}. Agora defina os fatores de conversão.`)
+      onOpenChange(false)
+    },
+    onError: (error) => toast.error(error),
+  })
+
   const updateField = <K extends keyof FormaVendaFormState>(field: K, value: FormaVendaFormState[K]) => {
     setForm((current) => ({ ...current, [field]: value }))
   }
 
+  const handleNomeChange = (nome: string) => {
+    const sugestao = inferirSugestao(nome)
+    if (sugestao && !isEditing) {
+      setForm((current) => ({
+        ...current,
+        nome,
+        unidade: sugestao.unidade,
+        fator_conversao: sugestao.fator,
+        permite_fracionado: sugestao.permite_fracionado,
+      }))
+    } else {
+      updateField("nome", nome)
+    }
+  }
+
+  const applyPreset = (preset: (typeof PRESETS)[number]) => {
+    setForm((current) => ({
+      ...current,
+      nome: preset.nome,
+      unidade: preset.unidade,
+      fator_conversao: preset.fator,
+      permite_fracionado: preset.permite_fracionado,
+    }))
+  }
+
   const showError = (field: keyof FormaVendaFormState) => submitted && validation[field]
   const fator = Number(normalizeDecimal(form.fator_conversao, "1"))
+  const aviso = avisoUnidadeBase(form.unidade, unidadeBase)
 
   return (
     <Dialog.Root
@@ -167,13 +254,36 @@ export function FormaVendaDialog({
           </div>
 
           <div className="space-y-4 px-5 py-4">
+            {!isEditing && (
+              <div>
+                <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                  <Zap className="size-3" />
+                  Atalhos rápidos
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {PRESETS.map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      disabled={mutation.isPending}
+                      onClick={() => applyPreset(preset)}
+                      className="rounded border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-700 transition-colors hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 disabled:opacity-50"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field label="Nome" error={showError("nome")}>
                 <Input
                   value={form.nome}
                   error={Boolean(showError("nome"))}
-                  onChange={(event) => updateField("nome", event.target.value)}
+                  onChange={(event) => handleNomeChange(event.target.value)}
                   disabled={mutation.isPending}
+                  placeholder="Ex: Saco 50kg, Barra 6m…"
                 />
               </Field>
 
@@ -191,6 +301,7 @@ export function FormaVendaDialog({
                   error={Boolean(showError("unidade"))}
                   onChange={(event) => updateField("unidade", event.target.value.toUpperCase())}
                   disabled={mutation.isPending}
+                  placeholder="Ex: SACO, KG, M, UN"
                 />
               </Field>
 
@@ -219,11 +330,33 @@ export function FormaVendaDialog({
               </Field>
 
               <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
-                <span className="font-semibold text-zinc-900">
-                  1 {form.unidade || "forma"} = {Number.isFinite(fator) ? fator : 0} {unidadeBase}
-                </span>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Resultado da conversão</p>
+                <p className="mt-1 font-semibold text-zinc-900">
+                  {form.unidade
+                    ? `1 ${form.unidade} baixa ${formatFator(fator)} ${unidadeBase} do estoque`
+                    : `1 forma baixa ${formatFator(fator)} ${unidadeBase} do estoque`}
+                </p>
               </div>
             </div>
+
+            {aviso && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+                <AlertTriangle className="mt-0.5 size-3.5 flex-shrink-0 text-amber-600" />
+                <div className="flex-1 space-y-2">
+                  <p>{aviso.mensagem}</p>
+                  <Button
+                    type="button"
+                    size="xs"
+                    variant="outline"
+                    loading={corrigirUnidadeMutation.isPending}
+                    disabled={mutation.isPending || corrigirUnidadeMutation.isPending}
+                    onClick={() => corrigirUnidadeMutation.mutate(aviso.sugestao)}
+                  >
+                    Corrigir unidade base para {aviso.sugestao}
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-4 border-t border-zinc-100 pt-4">
               {!isEditing && (

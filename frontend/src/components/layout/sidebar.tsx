@@ -19,6 +19,7 @@ import {
   LogOut,
   ShoppingCart,
   ShoppingBag,
+  MessageCircle,
 } from "lucide-react"
 import { useLogout } from "@/hooks/use-logout"
 
@@ -42,6 +43,7 @@ const menuGroups = [
     title: "Financeiro",
     items: [
       { href: "/financeiro", label: "Financeiro", icon: Wallet },
+      { href: "/cobrancas", label: "Cobranças", icon: MessageCircle },
       { href: "/boletos", label: "Boletos", icon: Landmark }
     ]
   },

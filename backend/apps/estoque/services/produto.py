@@ -14,6 +14,7 @@ from apps.estoque.models import (
     Produto,
     UnidadeMedida,
 )
+from .forma_venda import garantir_forma_venda_padrao
 
 
 def _base_snapshot(obj) -> dict[str, Any]:
@@ -317,6 +318,7 @@ def create_produto(*, user, data: dict[str, Any], request=None) -> Produto:
     produto = Produto(company=user.company, **{**data, "sku": sku, "codigo_barras": codigo_barras})
     _full_clean_or_400(produto)
     produto.save()
+    garantir_forma_venda_padrao(user=user, produto=produto, request=request)
 
     create_audit_log(
         user=user,

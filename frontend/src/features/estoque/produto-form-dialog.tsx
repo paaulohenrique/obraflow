@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useApiToast } from "@/hooks/use-api-toast"
 import { fornecedorDisplayName } from "@/lib/estoque"
+import { formasVendaService } from "@/services/formas-venda.service"
 import { produtosService } from "@/services/produtos.service"
 import type { CategoriaProduto, PaginatedResponse, Produto, ProdutoPayload, UnidadeMedida } from "@/types"
 
@@ -53,6 +54,19 @@ interface UnidadeDraft {
   sigla: string
   descricao: string
 }
+
+// Embalagens de compra comuns na construção civil
+// baseUnidade = sigla da unidade que deve ser a base do produto
+// fator = quantas baseUnidades há em 1 embalagem
+const EMBALAGEM_PRESETS = [
+  { key: "saco_50kg",  label: "Saco 50kg",  nome: "Saco 50kg",  unidade: "SACO",    fator: "50",   baseUnidade: "KG", baseNome: "Quilograma" },
+  { key: "saco_25kg",  label: "Saco 25kg",  nome: "Saco 25kg",  unidade: "SACO",    fator: "25",   baseUnidade: "KG", baseNome: "Quilograma" },
+  { key: "barra_6m",   label: "Barra 6m",   nome: "Barra 6m",   unidade: "BARRA",   fator: "6",    baseUnidade: "M",  baseNome: "Metro"      },
+  { key: "rolo_100m",  label: "Rolo 100m",  nome: "Rolo 100m",  unidade: "ROLO",    fator: "100",  baseUnidade: "M",  baseNome: "Metro"      },
+  { key: "milheiro",   label: "Milheiro",   nome: "Milheiro",   unidade: "MILHEIRO", fator: "1000", baseUnidade: "UN", baseNome: "Unidade"    },
+] as const
+
+type EmbalagemPreset = (typeof EMBALAGEM_PRESETS)[number]
 
 const emptyForm: ProdutoFormState = {
   nome: "",
@@ -154,6 +168,8 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
   const [unidadeDraft, setUnidadeDraft] = useState<UnidadeDraft>(emptyUnidadeDraft)
   const [categoriaSubmitted, setCategoriaSubmitted] = useState(false)
   const [unidadeSubmitted, setUnidadeSubmitted] = useState(false)
+  const [embalagemPreset, setEmbalagemPreset] = useState<EmbalagemPreset | null>(null)
+  const [fiscalAberto, setFiscalAberto] = useState(false)
   const isEditing = Boolean(produto)
   const nextFormKey = open ? `${produto?.id ?? "novo"}:${produto?.updated_at ?? ""}` : "closed"
 
@@ -167,6 +183,8 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
     setUnidadeDraft(emptyUnidadeDraft)
     setCategoriaSubmitted(false)
     setUnidadeSubmitted(false)
+    setEmbalagemPreset(null)
+    setFiscalAberto(false)
   }
 
   const categoriasQuery = useQuery({
@@ -223,7 +241,7 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
     : undefined
 
   const mutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const payload: ProdutoPayload = {
         nome: form.nome.trim(),
         descricao: form.descricao.trim(),
@@ -249,7 +267,41 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
         aliquota_pis: normalizeDecimal(form.aliquota_pis),
         aliquota_cofins: normalizeDecimal(form.aliquota_cofins),
       }
-      return isEditing ? produtosService.update(produto!.id, payload) : produtosService.create(payload)
+
+      const saved = isEditing
+        ? await produtosService.update(produto!.id, payload)
+        : await produtosService.create(payload)
+
+      // Cria formas de venda automaticamente ao cadastrar com embalagem
+      if (embalagemPreset && !isEditing) {
+        // Busca a forma "Unidade" criada automaticamente pelo backend
+        const formasExistentes = await formasVendaService.list({ produto: saved.id, page_size: 100 })
+        const formaDefault = formasExistentes.results.find(
+          (f) => f.nome === "Unidade" && Number(f.fator_conversao) === 1
+        )
+        // Forma na unidade base (ex: Quilograma KG fator=1) para venda fracionada
+        await formasVendaService.create({
+          produto: saved.id,
+          nome: embalagemPreset.baseNome,
+          unidade: embalagemPreset.baseUnidade,
+          fator_conversao: "1",
+          permite_fracionado: true,
+          padrao: false,
+        })
+        // Forma da embalagem (ex: Saco 50kg fator=50) como padrão
+        await formasVendaService.create({
+          produto: saved.id,
+          nome: embalagemPreset.nome,
+          unidade: embalagemPreset.unidade,
+          fator_conversao: embalagemPreset.fator,
+          permite_fracionado: false,
+          padrao: true,
+        })
+        // Remove a forma genérica "Unidade" que o backend criou
+        if (formaDefault) await formasVendaService.inativar(formaDefault.id)
+      }
+
+      return saved
     },
     onSuccess: (saved) => {
       queryClient.invalidateQueries({ queryKey: ["estoque"] })
@@ -309,6 +361,13 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
 
   const updateField = (field: keyof ProdutoFormState, value: string) => {
     setForm((current) => ({ ...current, [field]: value }))
+  }
+
+  const applyEmbalagemPreset = (preset: EmbalagemPreset) => {
+    setEmbalagemPreset(preset)
+    // Auto-seleciona a unidade base correta (ex: KG para saco, M para barra)
+    const unitMatch = unidades.find((u) => u.sigla.toUpperCase() === preset.baseUnidade)
+    if (unitMatch) setForm((current) => ({ ...current, unidade: unitMatch.id }))
   }
 
   const showError = (field: keyof ProdutoFormState) => submitted && validation[field]
@@ -573,6 +632,54 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                 )}
               </div>
 
+              {!isEditing && (
+                <div className="space-y-2 md:col-span-2">
+                  <div>
+                    <span className="text-xs font-medium text-zinc-600">Embalagem de compra</span>
+                    <p className="text-[11px] text-zinc-400">Como este produto é comprado/fornecido? O sistema cria as formas de venda automaticamente.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      disabled={isWorking}
+                      onClick={() => setEmbalagemPreset(null)}
+                      className={`rounded border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+                        embalagemPreset === null
+                          ? "border-zinc-900 bg-zinc-900 text-white"
+                          : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-zinc-400"
+                      }`}
+                    >
+                      Sem embalagem
+                    </button>
+                    {EMBALAGEM_PRESETS.map((preset) => (
+                      <button
+                        key={preset.key}
+                        type="button"
+                        disabled={isWorking}
+                        onClick={() => applyEmbalagemPreset(preset)}
+                        className={`rounded border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+                          embalagemPreset?.key === preset.key
+                            ? "border-orange-600 bg-orange-600 text-white"
+                            : "border-zinc-200 bg-zinc-50 text-zinc-700 hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700"
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                  {embalagemPreset && (
+                    <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2.5 text-xs text-blue-900">
+                      <p className="font-semibold">Estoque gerenciado em {embalagemPreset.baseUnidade}</p>
+                      <ul className="mt-1 space-y-0.5 text-blue-700">
+                        <li>· Entrada de 100 {embalagemPreset.label.toLowerCase()}s = {100 * Number(embalagemPreset.fator)} {embalagemPreset.baseUnidade} no estoque</li>
+                        <li>· Venda de 1 {embalagemPreset.baseUnidade} baixa 1 {embalagemPreset.baseUnidade} do estoque</li>
+                        <li>· Venda de 1 {embalagemPreset.label.toLowerCase()} baixa {embalagemPreset.fator} {embalagemPreset.baseUnidade} do estoque</li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <Field label="Fornecedor">
                 <select
                   value={form.fornecedor_principal}
@@ -625,13 +732,20 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                 />
               </Field>
 
-              <div className="space-y-4 rounded-md border border-yellow-200 bg-yellow-50/50 p-3 md:col-span-2">
-                <div>
-                  <p className="text-xs font-bold text-zinc-800">Dados fiscais</p>
-                  <p className="text-[11px] text-zinc-600">
-                    Estes dados serão usados futuramente para emissão de NF-e. Confirme as regras fiscais com seu contador.
-                  </p>
-                </div>
+              <div className="rounded-md border border-yellow-200 bg-yellow-50/50 md:col-span-2">
+                <button
+                  type="button"
+                  onClick={() => setFiscalAberto((v) => !v)}
+                  className="flex w-full items-center justify-between px-3 py-2.5 text-left"
+                >
+                  <div>
+                    <p className="text-xs font-bold text-zinc-800">Dados fiscais</p>
+                    <p className="text-[11px] text-zinc-500">NCM, CFOP, alíquotas — necessário para NF-e</p>
+                  </div>
+                  <span className="text-xs text-zinc-500">{fiscalAberto ? "▲ Fechar" : "▼ Expandir"}</span>
+                </button>
+                {fiscalAberto && (
+                <div className="space-y-4 border-t border-yellow-200 p-3">
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
                   <Field label="NCM" error={showError("ncm")}>
                     <Input
@@ -720,6 +834,8 @@ export function ProdutoFormDialog({ open, onOpenChange, produto, onSuccess }: Pr
                     <Input type="number" min="0" step="0.0001" value={form.aliquota_cofins} onChange={(event) => updateField("aliquota_cofins", event.target.value)} disabled={isWorking} />
                   </Field>
                 </div>
+                </div>
+                )}
               </div>
 
               <div className="md:col-span-2">

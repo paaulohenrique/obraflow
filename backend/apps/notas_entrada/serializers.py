@@ -255,8 +255,9 @@ class VincularFornecedorSerializer(TenantScopedSerializerMixin, serializers.Seri
     fornecedor = serializers.PrimaryKeyRelatedField(queryset=Fornecedor.objects.none())
 
 
-class DadosContaPagarSerializer(serializers.Serializer):
-    categoria = serializers.PrimaryKeyRelatedField(queryset=CategoriaFinanceira.objects.all())
+class DadosContaPagarSerializer(TenantScopedSerializerMixin, serializers.Serializer):
+    tenant_scoped_fields = {"categoria": CategoriaFinanceira}
+    categoria = serializers.PrimaryKeyRelatedField(queryset=CategoriaFinanceira.objects.none())
     data_vencimento = serializers.DateField()
     observacao = serializers.CharField(required=False, allow_blank=True, max_length=500)
 

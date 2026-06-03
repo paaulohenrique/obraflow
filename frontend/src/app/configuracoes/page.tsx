@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Building2, FileCog, Lock, Mail, Shield, User } from "lucide-react"
+import { Building2, FileCog, Lock, Mail, MessageCircle, Shield, User, Wallet } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -56,6 +56,36 @@ export default function ConfiguracoesPage() {
             </CardHeader>
             <CardContent className="text-sm text-zinc-600">
               Base cadastral para futura emissão de NF-e modelo 55.
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="size-4 text-orange-500" />
+                <h3 className="text-sm font-semibold text-zinc-900">Cobranças</h3>
+              </div>
+              <Link href="/configuracoes/cobrancas">
+                <Button size="sm" variant="outline">Abrir</Button>
+              </Link>
+            </CardHeader>
+            <CardContent className="text-sm text-zinc-600">
+              Regras de automação WhatsApp para contas fiado.
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Wallet className="size-4 text-orange-500" />
+                <h3 className="text-sm font-semibold text-zinc-900">Financeiro</h3>
+              </div>
+              <Link href="/configuracoes/financeiro">
+                <Button size="sm" variant="outline">Abrir</Button>
+              </Link>
+            </CardHeader>
+            <CardContent className="text-sm text-zinc-600">
+              Contas usadas automaticamente no PDV.
             </CardContent>
           </Card>
 

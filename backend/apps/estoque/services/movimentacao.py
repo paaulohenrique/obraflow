@@ -286,11 +286,15 @@ def devolucao_estoque(
     produto: Produto,
     quantidade: Decimal,
     motivo: str,
+    forma_venda: FormaVendaProduto | None = None,
+    quantidade_informada: Decimal | None = None,
     observacao: str = "",
     idempotency_key: str = "",
     metadata: dict[str, Any] | None = None,
     request=None,
 ) -> MovimentacaoEstoque:
+    if forma_venda is not None and quantidade_informada is not None:
+        quantidade = forma_venda.converter(quantidade_informada)
     if quantidade <= Decimal("0.000"):
         raise ValidationError({"quantidade": "Quantidade deve ser maior que zero."})
     if not motivo:
@@ -300,6 +304,8 @@ def devolucao_estoque(
         produto=produto,
         tipo=MovimentacaoEstoque.TIPO_DEVOLUCAO,
         quantidade_delta=quantidade,
+        forma_venda=forma_venda,
+        quantidade_informada=quantidade_informada,
         motivo=motivo,
         observacao=observacao,
         idempotency_key=idempotency_key,

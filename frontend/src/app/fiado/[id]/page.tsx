@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { useParams } from "next/navigation"
+import * as Dialog from "@radix-ui/react-dialog"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Banknote, CheckCircle2, CreditCard, FileDown, History, Package, Plus, Printer, User, XCircle } from "lucide-react"
+import { ArrowLeft, Banknote, CheckCircle2, CreditCard, FileDown, History, MessageCircle, Package, Plus, Printer, Send, User, X, XCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,8 +17,11 @@ import { Topbar } from "@/components/layout/topbar"
 import { cn, formatCurrency, formatDate, formatDatetime, formatDocument, initials } from "@/lib/utils"
 import { formatNumber, toNumber } from "@/lib/format"
 import { fiadoService } from "@/services/fiado.service"
+import { cobrancasService } from "@/services/cobrancas.service"
 import { estoqueService } from "@/services/estoque.service"
 import { useApiToast } from "@/hooks/use-api-toast"
+import { createIdempotencyKey } from "@/lib/idempotency"
+import type { CobrancaPreview } from "@/types"
 
 type Tab = "itens" | "pagamentos" | "historico"
 
@@ -36,6 +40,7 @@ export default function FiadoDetalhePage() {
   const [tab, setTab] = useState<Tab>("itens")
   const [itemDialogOpen, setItemDialogOpen] = useState(false)
   const [pagamentoDialogOpen, setPagamentoDialogOpen] = useState(false)
+  const [cobrancaPreview, setCobrancaPreview] = useState<CobrancaPreview | null>(null)
 
   const handlePrefetchProducts = () => {
     queryClient.prefetchQuery({
@@ -87,6 +92,29 @@ export default function FiadoDetalhePage() {
 
   const baixarPdfMutation = useMutation({
     mutationFn: () => fiadoService.baixarPdfContaFiado(id),
+    onError: (error) => toast.error(error),
+  })
+
+  const previewCobrancaMutation = useMutation({
+    mutationFn: () => cobrancasService.preview({ conta_id: id }),
+    onSuccess: setCobrancaPreview,
+    onError: (error) => toast.error(error),
+  })
+
+  const enviarCobrancaMutation = useMutation({
+    mutationFn: (preview: CobrancaPreview) =>
+      cobrancasService.enviar({
+        conta_id: preview.conta_id,
+        tipo: preview.tipo,
+        idempotency_key: createIdempotencyKey("fiado-cobranca"),
+      }),
+    onSuccess: () => {
+      toast.success("Cobrança enviada para a fila do WhatsApp.")
+      setCobrancaPreview(null)
+      queryClient.invalidateQueries({ queryKey: ["fiado"] })
+      queryClient.invalidateQueries({ queryKey: ["cobrancas"] })
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] })
+    },
     onError: (error) => toast.error(error),
   })
 
@@ -146,12 +174,77 @@ export default function FiadoDetalhePage() {
     <Shell>
       <FiadoItemDialog conta={conta} open={itemDialogOpen} onOpenChange={setItemDialogOpen} />
       <FiadoPagamentoDialog conta={conta} open={pagamentoDialogOpen} onOpenChange={setPagamentoDialogOpen} />
+      <Dialog.Root open={Boolean(cobrancaPreview)} onOpenChange={(open) => { if (!open) setCobrancaPreview(null) }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px]" />
+          <Dialog.Content
+            className="fixed left-1/2 top-1/2 z-50 w-[calc(100vw-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border border-zinc-200 bg-white p-5 shadow-xl focus:outline-none"
+            aria-describedby={undefined}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <Dialog.Title className="text-sm font-semibold text-zinc-900">Preview da cobrança</Dialog.Title>
+                {cobrancaPreview && (
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {cobrancaPreview.cliente_nome} · {formatCurrency(cobrancaPreview.valor)} · {cobrancaPreview.dias_atraso}d atraso
+                  </p>
+                )}
+              </div>
+              <Dialog.Close asChild>
+                <button className="rounded-md p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700" aria-label="Fechar">
+                  <X className="size-4" />
+                </button>
+              </Dialog.Close>
+            </div>
+            {cobrancaPreview && (
+              <div className="mt-4 space-y-4">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-md border border-zinc-200 px-3 py-2">
+                    <p className="text-zinc-400">Vencimento</p>
+                    <p className="mt-0.5 font-semibold text-zinc-900">{cobrancaPreview.data_vencimento_formatada}</p>
+                  </div>
+                  <div className="rounded-md border border-zinc-200 px-3 py-2">
+                    <p className="text-zinc-400">Valor</p>
+                    <p className="mt-0.5 font-semibold text-zinc-900">{formatCurrency(cobrancaPreview.valor)}</p>
+                  </div>
+                </div>
+                <div className="whitespace-pre-wrap rounded-md border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm leading-relaxed text-zinc-800">
+                  {cobrancaPreview.mensagem}
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Dialog.Close asChild>
+                    <Button variant="outline" size="sm">Cancelar</Button>
+                  </Dialog.Close>
+                  <Button
+                    size="sm"
+                    icon={<Send className="size-3.5" />}
+                    loading={enviarCobrancaMutation.isPending}
+                    onClick={() => enviarCobrancaMutation.mutate(cobrancaPreview)}
+                  >
+                    Enviar
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       <Topbar
         title={conta.cliente_nome}
         subtitle={`Fiado #${conta.id.slice(0, 8)} · Aberto em ${formatDate(conta.data_abertura)}`}
         actions={
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!contaAberta || toNumber(conta.valor_restante) <= 0}
+              loading={previewCobrancaMutation.isPending}
+              icon={<MessageCircle className="size-3.5" />}
+              onClick={() => previewCobrancaMutation.mutate()}
+            >
+              Cobrar
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -237,9 +330,27 @@ export default function FiadoDetalhePage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <CreditCard className="size-3.5 text-zinc-400" />
-                    <span>Vencimento da fatura: {conta.data_vencimento ? formatDate(conta.data_vencimento) : "Imediato"}</span>
+                    <span>Vencimento: {conta.data_vencimento ? formatDate(conta.data_vencimento) : "Sem prazo definido"}</span>
                   </div>
                 </div>
+                {toNumber(conta.cliente_limite_credito) > 0 && (
+                  <div className="rounded-md border border-zinc-100 bg-zinc-50 px-3 py-2 text-xs space-y-1.5">
+                    <div className="flex justify-between font-medium text-zinc-600">
+                      <span>Limite do cliente</span>
+                      <span className="tabular-nums text-zinc-900">{formatCurrency(conta.cliente_limite_credito)}</span>
+                    </div>
+                    <div className="flex justify-between text-zinc-500">
+                      <span>Utilizado (total)</span>
+                      <span className="tabular-nums">{formatCurrency(conta.cliente_saldo_devedor)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold">
+                      <span className="text-zinc-600">Disponível</span>
+                      <span className={`tabular-nums ${toNumber(conta.cliente_credito_disponivel) <= 0 ? "text-red-600" : "text-green-600"}`}>
+                        {formatCurrency(conta.cliente_credito_disponivel)}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="pt-2">
                 <Badge variant={status.variant} className="font-bold">{status.label.toUpperCase()}</Badge>
